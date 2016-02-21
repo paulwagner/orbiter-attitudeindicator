@@ -1,5 +1,5 @@
-#ifndef __ATTITUDEDIRECTIONINDICATORMFD_H
-#define __ATTITUDEDIRECTIONINDICATORMFD_H
+#ifndef __ATTITUDEINDICATORMFD_H
+#define __ATTITUDEINDICATORMFD_H
 
 class ADI;
 class AttitudeReferenceADI;
@@ -8,10 +8,10 @@ class AttitudeReferenceADI;
 const int modeCount = 5;
 const char* modeStrings[5] = { "ECL", "EQU", "ORB", "LOH", "NAV" };
 
-class AttitudeDirectionIndicatorMFD: public MFD2 {
+class AttitudeIndicatorMFD: public MFD2 {
 public:
-	AttitudeDirectionIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel);
-	~AttitudeDirectionIndicatorMFD();
+	AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel);
+	~AttitudeIndicatorMFD();
 	char *ButtonLabel (int bt);
 	int ButtonMenu (const MFDBUTTONMENU **menu) const;
 	bool ConsumeButton(int bt, int event);

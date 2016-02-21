@@ -12,7 +12,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FDD37414-3C8F-4322-8B45-BAAEC4B23F38}</ProjectGuid>
-    <ProjectName>AttitudeDirectionIndicatorMFD</ProjectName>
+    <ProjectName>AttitudeIndicatorMFD</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -102,14 +102,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ADI.cpp" />
-    <ClCompile Include="AttitudeDirectionIndicatorMFD.cpp" />
+    <ClCompile Include="AttitudeIndicatorMFD.cpp" />
     <ClCompile Include="AttitudeReferenceADI.cpp" />
     <ClCompile Include="attref.cpp" />
     <ClCompile Include="FlightStatus.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ADI.h" />
-    <ClInclude Include="AttitudeDirectionIndicatorMFD.h" />
+    <ClInclude Include="AttitudeIndicatorMFD.h" />
     <ClInclude Include="AttitudeReferenceADI.h" />
     <ClInclude Include="attref.h" />
     <ClInclude Include="FlightStatus.h" />

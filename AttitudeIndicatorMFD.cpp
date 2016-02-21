@@ -2,7 +2,7 @@
 #define ORBITER_MODULE
 #include "windows.h"
 #include "orbitersdk.h"
-#include "AttitudeDirectionIndicatorMFD.h"
+#include "AttitudeIndicatorMFD.h"
 #include "ADI.h"
 #include "AttitudeReferenceADI.h"
 
@@ -11,8 +11,8 @@
 
 static struct {
 	int mode;
-	AttitudeDirectionIndicatorMFD *CurrentMFD;
-} g_AttitudeDirectionIndicatorMFD;
+	AttitudeIndicatorMFD *CurrentMFD;
+} g_AttitudeIndicatorMFD;
 
 
 // ==============================================================
@@ -25,29 +25,29 @@ DLLCLBK void InitModule (HINSTANCE hDLL)
 	spec.name = name;
 	spec.key = OAPI_KEY_T;                // MFD mode selection key
 	spec.context = NULL;
-	spec.msgproc = AttitudeDirectionIndicatorMFD::MsgProc;  // MFD mode callback function
+	spec.msgproc = AttitudeIndicatorMFD::MsgProc;  // MFD mode callback function
 
 	// Register the new MFD mode with Orbiter
-	g_AttitudeDirectionIndicatorMFD.mode = oapiRegisterMFDMode(spec);
-	g_AttitudeDirectionIndicatorMFD.CurrentMFD = NULL;
+	g_AttitudeIndicatorMFD.mode = oapiRegisterMFDMode(spec);
+	g_AttitudeIndicatorMFD.CurrentMFD = NULL;
 }
 
 DLLCLBK void ExitModule (HINSTANCE hDLL)
 {
 	// Unregister the custom MFD mode when the module is unloaded
-	oapiUnregisterMFDMode(g_AttitudeDirectionIndicatorMFD.mode);
+	oapiUnregisterMFDMode(g_AttitudeIndicatorMFD.mode);
 }
 
 // ==============================================================
 // MFD class implementation
 
 // Constructor
-AttitudeDirectionIndicatorMFD::AttitudeDirectionIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
+AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 : MFD2 (w, h, vessel)
 {
 	font = oapiCreateFont (w/20, true, "Arial", FONT_NORMAL, 450);
 	// Add MFD initialisation here
-	g_AttitudeDirectionIndicatorMFD.CurrentMFD = this;
+	g_AttitudeIndicatorMFD.CurrentMFD = this;
 	attref = new AttitudeReferenceADI(pV);
 	adi = new ADI(1, 1, w - 2, h * 2 / 3, attref, cw, ch);
 	zoom = 2;
@@ -55,7 +55,7 @@ AttitudeDirectionIndicatorMFD::AttitudeDirectionIndicatorMFD(DWORD w, DWORD h, V
 }
 
 // Destructor
-AttitudeDirectionIndicatorMFD::~AttitudeDirectionIndicatorMFD()
+AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 {
 	oapiReleaseFont (font);
 	// Add MFD cleanup code here
@@ -64,7 +64,7 @@ AttitudeDirectionIndicatorMFD::~AttitudeDirectionIndicatorMFD()
 }
 
 // Return button labels
-char *AttitudeDirectionIndicatorMFD::ButtonLabel(int bt)
+char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 {
 	// The labels for the buttons used by our MFD mode
 	static char *label[3] = {"FRM", "Z+", "Z-"};
@@ -72,7 +72,7 @@ char *AttitudeDirectionIndicatorMFD::ButtonLabel(int bt)
 }
 
 // Return button menus
-int AttitudeDirectionIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
+int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 {
 	// The menu descriptions for the buttons
 	static const MFDBUTTONMENU mnu[3] = {
@@ -84,7 +84,7 @@ int AttitudeDirectionIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 	return 3; // return the number of buttons used
 }
 
-bool AttitudeDirectionIndicatorMFD::ConsumeButton(int bt, int event)
+bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 {
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
 	static const DWORD btkey[3] = { OAPI_KEY_F, OAPI_KEY_I, OAPI_KEY_O };
@@ -92,7 +92,7 @@ bool AttitudeDirectionIndicatorMFD::ConsumeButton(int bt, int event)
 	else return false;
 }
 
-bool AttitudeDirectionIndicatorMFD::ConsumeKeyBuffered(DWORD key)
+bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 {
 	switch (key) {
 	case OAPI_KEY_F:
@@ -110,12 +110,12 @@ bool AttitudeDirectionIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 }
 
 
-void AttitudeDirectionIndicatorMFD::PostStep(double simt, double simdt, double mjd) {
+void AttitudeIndicatorMFD::PostStep(double simt, double simdt, double mjd) {
 	attref->PostStep(simt, simdt, mjd);
 }
 
 // Repaint the MFD
-bool AttitudeDirectionIndicatorMFD::Update(oapi::Sketchpad *skp)
+bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
 {
 	Title (skp, "Attitude Indicator");
 	// Draws the MFD title
@@ -135,8 +135,8 @@ bool AttitudeDirectionIndicatorMFD::Update(oapi::Sketchpad *skp)
 	// Add MFD display routines here.
 	// Use the device context (hDC) for Windows GDI paint functions.
 
-	if (g_AttitudeDirectionIndicatorMFD.CurrentMFD != NULL) {
-		g_AttitudeDirectionIndicatorMFD.CurrentMFD->PostStep(oapiGetSimTime(), oapiGetSimStep(), oapiGetSimMJD());
+	if (g_AttitudeIndicatorMFD.CurrentMFD != NULL) {
+		g_AttitudeIndicatorMFD.CurrentMFD->PostStep(oapiGetSimTime(), oapiGetSimStep(), oapiGetSimMJD());
 	}
 	adi->DrawBall(skp, zoom);
 
@@ -146,13 +146,13 @@ bool AttitudeDirectionIndicatorMFD::Update(oapi::Sketchpad *skp)
 }
 
 // MFD message parser
-int AttitudeDirectionIndicatorMFD::MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
+int AttitudeIndicatorMFD::MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg) {
 	case OAPI_MSG_MFD_OPENED:
 		// Our new MFD mode has been selected, so we create the MFD and
 		// return a pointer to it.
-		return (int)(new AttitudeDirectionIndicatorMFD(LOWORD(wparam), HIWORD(wparam), (VESSEL*)lparam));
+		return (int)(new AttitudeIndicatorMFD(LOWORD(wparam), HIWORD(wparam), (VESSEL*)lparam));
 	}
 	return 0;
 }
