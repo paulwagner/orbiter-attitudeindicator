@@ -37,7 +37,7 @@ protected:
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);
 	void DrawVectors(oapi::Sketchpad* skp);
-	void CalcVectors(double alpha, double beta, double bank, double& x, double& y);
+	void CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta);
 
 private:
 	void CreateDisplayLists();

@@ -443,12 +443,21 @@ void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 	skp->Ellipse(width / 2 - offset, height / 2 - offset, width / 2 + offset, height / 2 + offset);
 }
 
-void ADI::CalcVectors(double alpha, double beta, double bank, double& x, double& y) {
+void ADI::CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta) {
 	GLdouble model[16];
 	GLdouble proj[16];
 	GLint view[4];
 	GLdouble z;
 	GLdouble fp[3];
+	VECTOR3 v1, v2;
+
+	v1 = v2 = vector; // Vector in vessel coordinates
+	v1.x = 0;
+	v2.y = 0;
+	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
+	alpha *= sgn(v2.x);
+	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
+	beta *= sgn(v1.y);
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model);
 	glGetDoublev(GL_PROJECTION_MATRIX, proj);
@@ -480,60 +489,45 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
 	double bank = fs.bank*RAD;
-	VECTOR3 v1, v2;
 	double alpha, beta;
 	double x, y;
 	int ix, iy;
 	double alphaF = 1.2;
 	double betaF = 1.2;
-	double dx = cos(30 * RAD);
-	double dy = cos(30 * RAD);
-	double nmlScale = 1.2;
 
 	// Prograde
-	v1 = v2 = fs.airspeed_vector; // Prograde vector in vessel coordinates
-	v1.x = 0;
-	v2.y = 0;
-	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
-	alpha *= sgn(v2.x);
-	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
-	beta *= sgn(v1.y);
-
-	CalcVectors(alpha, beta, bank, x, y);
+	double d = sin(45 * RAD);
+	CalcVectors(fs.airspeed_vector, bank, x, y, alpha, beta);
 	ix = (int)x, iy = (int)y;
 	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 		skp->SetPen(penGrad);
 		skp->SetBrush(brushGrad);
 		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 		skp->SetBrush(NULL);
-		skp->Ellipse(ix + cw, iy + ch, ix - cw, iy - ch);
-		skp->Line(ix, iy - ch, ix, iy - 2*ch);
-		skp->Line(ix + cw, iy, ix + 2*cw, iy);
-		skp->Line(ix - cw, iy, ix - 2*cw, iy);
+		skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+		skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
+		skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
+		skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
 	}
 
 	// Retrograde
-	v1 = v2 = -fs.airspeed_vector; // Retrograde vector in vessel coordinates
-	v1.x = 0;
-	v2.y = 0;
-	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
-	alpha *= sgn(v2.x);
-	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
-	beta *= sgn(v1.y);
-	CalcVectors(alpha, beta, bank, x, y);
+	CalcVectors(-fs.airspeed_vector, bank, x, y, alpha, beta);
 	ix = (int)x, iy = (int)y;
 	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 		skp->SetPen(penGrad);
 		skp->SetBrush(NULL);
-		skp->Ellipse(ix + 10, iy + 10, ix - 10, iy - 10);
-		skp->Line(ix, iy - 10, ix, iy - 20);
-		skp->Line(ix + 10, iy, ix + 20, iy);
-		skp->Line(ix - 10, iy, ix - 20, iy);
-		skp->Line(ix - 7, iy - 7, ix + 7, iy + 7);
-		skp->Line(ix - 7, iy + 7, ix + 7, iy - 7);
+		skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+		skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
+		skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
+		skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
+		skp->Line(ix - (int)(cw*d), iy - (int)(ch*d), ix + (int)(cw*d), iy + (int)(ch*d));
+		skp->Line(ix - (int)(cw*d), iy + (int)(ch*d), ix + (int)(cw*d), iy - (int)(ch*d));
 	}
 
 	// Normal
+	double dx = cos(30 * RAD);
+	double dy = cos(30 * RAD);
+	double nmlScale = 1.2;
 	OBJHANDLE oh = v->GetGravityRef();
 	OBJHANDLE vh = v->GetHandle();
 	VECTOR3 objv, shipv, objlv, shiplv, grav;
@@ -542,41 +536,28 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	oapiGlobalToLocal(vh, &shipv, &shiplv);
 	oapiGlobalToLocal(vh, &objv, &objlv);
 	grav = shiplv - objlv; // Gravity vector in vessel coordinates
-	v1 = v2 = crossp(unit(fs.airspeed_vector), unit(grav)); // Normal vector in vessel coordinates
-	v1.x = 0;
-	v2.y = 0;
-	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
-	alpha *= sgn(v2.x);
-	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
-	beta *= sgn(v1.y);
-	CalcVectors(alpha, beta, bank, x, y);
+	VECTOR3 nml = crossp(unit(fs.airspeed_vector), unit(grav));
+	CalcVectors(nml, bank, x, y, alpha, beta);
 	ix = (int)x, iy = (int)y;
 	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 		skp->SetBrush(brushNormal);
 		skp->SetPen(penNormal);
 		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-		skp->Line(ix - cw*dx*nmlScale, iy + ch*dy*nmlScale, ix + cw*dx*nmlScale, iy + ch*dy*nmlScale);
-		skp->Line(ix - cw*dx*nmlScale, iy + ch*dy*nmlScale, ix, iy - ch*nmlScale);
-		skp->Line(ix, iy - ch*nmlScale, ix + cw*dx*nmlScale, iy + ch*dy*nmlScale);
+		skp->Line(ix - (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale));
+		skp->Line(ix - (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale), ix, iy - (int)(ch*nmlScale));
+		skp->Line(ix, iy - (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale));
 	}
 
 	// Anti-Normal
-	v1 = v2 = -crossp(unit(fs.airspeed_vector), unit(grav)); // Antinormal vector in vessel coordinates
-	v1.x = 0;
-	v2.y = 0;
-	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
-	alpha *= sgn(v2.x);
-	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
-	beta *= sgn(v1.y);
-	CalcVectors(alpha, beta, bank, x, y);
+	CalcVectors(-nml, bank, x, y, alpha, beta);
 	ix = (int)x, iy = (int)y;
 	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 		skp->SetBrush(brushNormal);
 		skp->SetPen(penNormal);
 		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-		skp->Line(ix - cw*dx*nmlScale, iy - ch*dy*nmlScale, ix + cw*dx*nmlScale, iy - ch*dy*nmlScale);
-		skp->Line(ix - cw*dx*nmlScale, iy - ch*dy*nmlScale, ix, iy + ch*nmlScale);
-		skp->Line(ix, iy + ch*nmlScale, ix + cw*dx*nmlScale, iy - ch*dy*nmlScale);
+		skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
+		skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix, iy + (int)(ch*nmlScale));
+		skp->Line(ix, iy + (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
 	}
 
 }
