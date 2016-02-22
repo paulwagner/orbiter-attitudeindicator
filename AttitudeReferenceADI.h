@@ -12,6 +12,7 @@ typedef struct {
 	double pitchrate;
 	double yawrate;
 	double rollrate;
+	VECTOR3 airspeed_vector;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {

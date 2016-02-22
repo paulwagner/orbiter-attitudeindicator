@@ -10,5 +10,6 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	VECTOR3 v;
 	GetVessel()->GetAngularVel(v);
 	fs.pitchrate = v.x*DEG; fs.rollrate = v.z*DEG; fs.yawrate = -v.y*DEG;
+	GetVessel()->GetShipAirspeedVector(fs.airspeed_vector);
 	return fs;
 }

@@ -32,11 +32,12 @@ protected:
 	void DrawSurfaceText(oapi::Sketchpad* skp);
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);
-	void DrawPrograde(oapi::Sketchpad* skp);
+	void DrawVectors(oapi::Sketchpad* skp);
 
 private:
 	void CreateDisplayLists();
 	template<class T>void CheckRange(T &Var, const T &Min, const T &Max);
+	template <typename T> int sgn(T val);
 	void GetOpenGLRotMatrix(double* m);
 
 	int x, y;

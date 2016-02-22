@@ -49,9 +49,10 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	// Add MFD initialisation here
 	g_AttitudeIndicatorMFD.CurrentMFD = this;
 	attref = new AttitudeReferenceADI(pV);
-	adi = new ADI(1, 1, w - 2, h * 2 / 3, attref, cw, ch);
-	zoom = 2;
+	adi = new ADI(1, 1, w - 2, h * 2 / 3, attref, 10, 10);
+	zoom = 1;
 	mode = 3;
+	attref->SetMode(mode);
 }
 
 // Destructor

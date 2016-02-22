@@ -268,8 +268,8 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 
 	DrawSurfaceText(skp);
 	DrawWing(skp);
-	DrawTurnVector(skp);
-	//DrawPrograde(skp);
+	//DrawTurnVector(skp);
+	DrawVectors(skp);
 }
 
 void ADI::GetOpenGLRotMatrix(double* m) {
@@ -353,6 +353,8 @@ void ADI::DrawSurfaceText(oapi::Sketchpad* skp) {
 
 	skp->SetTextColor(WHITE);
 
+	double cw, ch;
+	cw = ch = 0;
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
 	if (fs.heading > 267 || fs.heading < 93 || abs(fs.pitch) > 80) {
 		skp->Text((int)(x + NSEW[0] - cw / 2),
@@ -378,11 +380,11 @@ void ADI::DrawSurfaceText(oapi::Sketchpad* skp) {
 
 void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->SetPen(penWing);
-	skp->MoveTo(width / 2 - (int)(cw * 4), height / 3);
-	skp->LineTo(width / 2 - (int)(cw * 3 / 2), height / 3);
-	skp->LineTo(width / 2, height / 3 + (int)ch);
-	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 3);
-	skp->LineTo(width / 2 + (int)(cw * 4), height / 3);
+	skp->MoveTo(width / 2 - (int)(cw * 4), height / 2);
+	skp->LineTo(width / 2 - (int)(cw * 3 / 2), height / 2);
+	skp->LineTo(width / 2, height / 2 + (int)ch);
+	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 2);
+	skp->LineTo(width / 2 + (int)(cw * 4), height / 2);
 	//skp->MoveTo(width / 2 - 40, height / 2);
 	//skp->LineTo(width / 2 - 15, height / 2);
 	//skp->LineTo(width / 2, height / 2 + 10);
@@ -430,54 +432,43 @@ void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 	skp->Ellipse(width / 2 - offset, height / 2 - offset, width / 2 + offset, height / 2 + offset);
 }
 
-void ADI::DrawPrograde(oapi::Sketchpad* skp) {
-	VECTOR3 rVel, rPos, gPos;
-	VESSEL *v = oapiGetFocusInterface();
-	OBJHANDLE rBody = v->GetGravityRef();	// Get current reference body (the celestial body currently being orbited) 
-
-	v->GetGlobalPos(gPos);		// Get position of vessel in global frame.
-	v->GetRelativePos(rBody, rPos);		// Get position of vessel relative to reference body.
-	v->GetRelativeVel(rBody, rVel);		// Get velocity of vessel relative to reference body.
-	VECTOR3 horizon = crossp(rVel, rPos);	// Use cross-product of 'rVel' and 'rPos' to find horizon reference.
-
-	VECTOR3 vPrograde;
-	v->Global2Local((rVel + gPos), vPrograde); // Get prograde vector in local coordinates.
-	//v->Global2Local(rVel, vPrograde); // Get prograde vector in local coordinates.
-	//double len = sqrt(vPrograde.x*vPrograde.x + vPrograde.y*vPrograde.y + vPrograde.z*vPrograde.z);
-	//vPrograde.x /= len;
-	//vPrograde.y /= len;
-	//vPrograde.z /= len;
-
-	VECTOR3 vNormal = { (vPrograde.x), (vPrograde.y*cos(RAD*-90) - vPrograde.z*sin(RAD*-90)), (vPrograde.y*sin(RAD*-90) + vPrograde.z*cos(RAD*-90)) }; // Rotate prograde vector by -90 degrees to find normal vector
-
-	skp->SetTextColor(WHITE);
-	std::ostringstream sstream;
-	sstream << vPrograde.x << "," << vPrograde.y << "," << vPrograde.z;
-	std::string str = sstream.str();
-	skp->Text(20,10,str.c_str(),str.length());
-
+void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	GLdouble model[16];
 	GLdouble proj[16];
 	GLint view[4];
 	GLdouble z;
 
 	GLdouble fp[3];
+	FLIGHTSTATUS fs = attref->GetFlightStatus();
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model);
 	glGetDoublev(GL_PROJECTION_MATRIX, proj);
 	glGetIntegerv(GL_VIEWPORT, view);
 
-	/*
-	fpPitch = (float)(pitch + pitchrate * 3);
-	fpHeading = (float)(-yaw + yawrate * 3);
+	// View coordinates
+	GLdouble objx, objy, objz;
+	gluUnProject((GLdouble)width / 2, (GLdouble)height / 2, 0, model, proj, view, &objx, &objy, &objz);
 
-	fp[0] = cos(fpPitch*RADf) * sin(fpHeading*RADf);
-	fp[1] = sin(fpPitch*RADf);
-	fp[2] = cos(fpPitch*RADf) * cos(fpHeading*RADf);
-	*/
-	fp[0] = vPrograde.x;
-	fp[1] = vPrograde.y;
-	fp[2] = vPrograde.z;
+	double viewlen = length(_V(objx, objy, objz));
+	double inc = acos(objy / viewlen); // Inclination
+	double azi = atan2(objx, objz); // Azimuth
+
+	VECTOR3 v1, v2;
+	v1 = v2 = fs.airspeed_vector;
+	v1.x = 0;
+	v2.y = 0;
+	double alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
+	alpha *= sgn(v2.x);
+	double beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
+	beta *= sgn(v1.y);
+
+	double bank = fs.bank*RAD;
+	azi += cos(bank) * alpha - sin(bank) * beta;
+	inc += -cos(bank) * beta - sin(bank) * alpha;
+
+	fp[0] = sin(inc) * sin(azi);
+	fp[1] = cos(inc);
+	fp[2] = sin(inc) * cos(azi);
 
 	double x, y;
 	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
@@ -486,11 +477,8 @@ void ADI::DrawPrograde(oapi::Sketchpad* skp) {
 	CheckRange(y, (double)0, (double)height);
 	y = height - y; // invert y coords
 
-	std::ostringstream sstream2;
-	sstream2 << x << "," << y << "," << z;
-	std::string strs = sstream2.str();
-	skp->Text(20, 50, strs.c_str(), strs.length());
-
+	if (abs(alpha) <= 1.2 && abs(beta) <= 1.3)
+		skp->Ellipse(x + 10, y + 10, x - 10, y - 10);
 }
 
 template<class T>
@@ -501,4 +489,9 @@ void ADI::CheckRange(T &Var, const T &Min, const T &Max)
 	else
 		if (Var > Max)
 			Var = Max;
+}
+
+template <typename T>
+int ADI::sgn(T val) {
+	return (T(0) < val) - (val < T(0));
 }
