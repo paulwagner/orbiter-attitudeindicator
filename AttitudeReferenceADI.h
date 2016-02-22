@@ -19,6 +19,7 @@ class AttitudeReferenceADI : public AttitudeReference {
 public:
   AttitudeReferenceADI(const VESSEL* vessel) : AttitudeReference(vessel){};
   FLIGHTSTATUS &GetFlightStatus();
+  bool GetReferenceName(char *string, int n);
 
 private:
 	mutable FLIGHTSTATUS fs;

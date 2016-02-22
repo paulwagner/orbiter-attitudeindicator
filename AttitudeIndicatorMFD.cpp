@@ -5,6 +5,7 @@
 #include "AttitudeIndicatorMFD.h"
 #include "ADI.h"
 #include "AttitudeReferenceADI.h"
+#include <sstream>
 
 // ==============================================================
 // Global variables
@@ -142,7 +143,15 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
 	adi->DrawBall(skp, zoom);
 
 	skp->SetTextColor(WHITE);
-	skp->Text(10, 10, modeStrings[mode], 3);
+	std::ostringstream sstream;
+	sstream << "Frame: " << modeStrings[mode];
+	skp->Text(10, 10, sstream.str().c_str(), sstream.str().length());
+	char buf[50];
+	if (attref->GetReferenceName(buf, 50)) {
+		std::string str = "Ref: ";
+		str.append(buf);
+		skp->Text(W/2 + 10, 10, str.c_str(), str.length());
+	}
 	return true;
 }
 

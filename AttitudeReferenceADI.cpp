@@ -13,3 +13,39 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	GetVessel()->GetShipAirspeedVector(fs.airspeed_vector);
 	return fs;
 }
+
+bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {
+	OBJHANDLE handle = 0;
+	switch (GetMode()) {
+	case 1:
+	case 2: {
+		handle = GetVessel()->GetGravityRef();
+		oapiGetObjectName(handle, string, n);
+	}
+		return true;
+	case 3: {
+		handle = GetVessel()->GetSurfaceRef();
+		oapiGetObjectName(handle, string, n);
+	}
+		return true;
+	case 4: {
+		NAVDATA ndata;
+		NAVHANDLE navhandle = GetVessel()->GetNavSource(GetNavid());
+		if (navhandle) {
+			oapiGetNavData(navhandle, &ndata);
+			switch (ndata.type) {
+			case TRANSMITTER_IDS: {
+				VESSEL *vtgt = oapiGetVesselInterface(ndata.ids.hVessel);
+				strncpy(string, vtgt->GetName(), n);
+			}	return true;
+			case TRANSMITTER_VTOL:
+			case TRANSMITTER_VOR: {
+				handle = GetVessel()->GetSurfaceRef();
+				oapiGetObjectName(handle, string, n);
+			} return true;
+			}
+		}
+	}
+	}
+	return false;
+}
