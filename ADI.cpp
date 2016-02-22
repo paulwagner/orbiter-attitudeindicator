@@ -15,9 +15,14 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 
 	penWing = oapiCreatePen(1, 2, WHITE);
 	penTurnVec = oapiCreatePen(1, 2, GREEN);
-	penGrad = oapiCreatePen(1, 2, GREEN);
-	penNormal = oapiCreatePen(1, 2, RED);
-	penRadial = oapiCreatePen(1, 2, BLUE);
+	penGrad = oapiCreatePen(1, 2, PROGRADE);
+	penNormal = oapiCreatePen(1, 2, NORMAL);
+	penRadial = oapiCreatePen(1, 2, RADIAL);
+	brushWing = oapiCreateBrush(WHITE);
+	brushTurnVec = oapiCreateBrush(GREEN);
+	brushGrad = oapiCreateBrush(PROGRADE);
+	brushNormal = oapiCreateBrush(NORMAL);
+	brushRadial = oapiCreateBrush(RADIAL);
 
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
@@ -86,7 +91,11 @@ ADI::~ADI() {
 	delete penGrad;
 	delete penNormal;
 	delete penRadial;
-
+	delete brushWing;
+	delete brushTurnVec;
+	delete brushGrad;
+	delete brushNormal;
+	delete brushRadial;
 	wglMakeCurrent(NULL, NULL);	//standard OpenGL release
 	wglDeleteContext(hRC);
 	hRC=NULL;
@@ -266,10 +275,10 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	glFinish();
 	BitBlt (hDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
 
+	DrawVectors(skp);
 	DrawSurfaceText(skp);
 	DrawWing(skp);
 	//DrawTurnVector(skp);
-	DrawVectors(skp);
 }
 
 void ADI::GetOpenGLRotMatrix(double* m) {
@@ -380,11 +389,13 @@ void ADI::DrawSurfaceText(oapi::Sketchpad* skp) {
 
 void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->SetPen(penWing);
+	skp->SetBrush(brushWing);
 	skp->MoveTo(width / 2 - (int)(cw * 4), height / 2);
 	skp->LineTo(width / 2 - (int)(cw * 3 / 2), height / 2);
 	skp->LineTo(width / 2, height / 2 + (int)ch);
 	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 2);
 	skp->LineTo(width / 2 + (int)(cw * 4), height / 2);
+	skp->Ellipse(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
 	//skp->MoveTo(width / 2 - 40, height / 2);
 	//skp->LineTo(width / 2 - 15, height / 2);
 	//skp->LineTo(width / 2, height / 2 + 10);
@@ -432,14 +443,12 @@ void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 	skp->Ellipse(width / 2 - offset, height / 2 - offset, width / 2 + offset, height / 2 + offset);
 }
 
-void ADI::DrawVectors(oapi::Sketchpad* skp) {
+void ADI::CalcVectors(double alpha, double beta, double bank, double& x, double& y) {
 	GLdouble model[16];
 	GLdouble proj[16];
 	GLint view[4];
 	GLdouble z;
-
 	GLdouble fp[3];
-	FLIGHTSTATUS fs = attref->GetFlightStatus();
 
 	glGetDoublev(GL_MODELVIEW_MATRIX, model);
 	glGetDoublev(GL_PROJECTION_MATRIX, proj);
@@ -453,16 +462,6 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	double inc = acos(objy / viewlen); // Inclination
 	double azi = atan2(objx, objz); // Azimuth
 
-	VECTOR3 v1, v2;
-	v1 = v2 = fs.airspeed_vector;
-	v1.x = 0;
-	v2.y = 0;
-	double alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
-	alpha *= sgn(v2.x);
-	double beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
-	beta *= sgn(v1.y);
-
-	double bank = fs.bank*RAD;
 	azi += cos(bank) * alpha - sin(bank) * beta;
 	inc += -cos(bank) * beta - sin(bank) * alpha;
 
@@ -470,15 +469,116 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	fp[1] = cos(inc);
 	fp[2] = sin(inc) * cos(azi);
 
-	double x, y;
 	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
 
 	CheckRange(x, (double)0, (double)width);
 	CheckRange(y, (double)0, (double)height);
 	y = height - y; // invert y coords
+}
 
-	if (abs(alpha) <= 1.2 && abs(beta) <= 1.3)
-		skp->Ellipse(x + 10, y + 10, x - 10, y - 10);
+void ADI::DrawVectors(oapi::Sketchpad* skp) {
+	const VESSEL *v = attref->GetVessel();
+	FLIGHTSTATUS fs = attref->GetFlightStatus();
+	double bank = fs.bank*RAD;
+	VECTOR3 v1, v2;
+	double alpha, beta;
+	double x, y;
+	int ix, iy;
+	double alphaF = 1.2;
+	double betaF = 1.2;
+	double dx = cos(30 * RAD);
+	double dy = cos(30 * RAD);
+	double nmlScale = 1.2;
+
+	// Prograde
+	v1 = v2 = fs.airspeed_vector; // Prograde vector in vessel coordinates
+	v1.x = 0;
+	v2.y = 0;
+	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
+	alpha *= sgn(v2.x);
+	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
+	beta *= sgn(v1.y);
+
+	CalcVectors(alpha, beta, bank, x, y);
+	ix = (int)x, iy = (int)y;
+	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		skp->SetPen(penGrad);
+		skp->SetBrush(brushGrad);
+		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+		skp->SetBrush(NULL);
+		skp->Ellipse(ix + cw, iy + ch, ix - cw, iy - ch);
+		skp->Line(ix, iy - ch, ix, iy - 2*ch);
+		skp->Line(ix + cw, iy, ix + 2*cw, iy);
+		skp->Line(ix - cw, iy, ix - 2*cw, iy);
+	}
+
+	// Retrograde
+	v1 = v2 = -fs.airspeed_vector; // Retrograde vector in vessel coordinates
+	v1.x = 0;
+	v2.y = 0;
+	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
+	alpha *= sgn(v2.x);
+	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
+	beta *= sgn(v1.y);
+	CalcVectors(alpha, beta, bank, x, y);
+	ix = (int)x, iy = (int)y;
+	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		skp->SetPen(penGrad);
+		skp->SetBrush(NULL);
+		skp->Ellipse(ix + 10, iy + 10, ix - 10, iy - 10);
+		skp->Line(ix, iy - 10, ix, iy - 20);
+		skp->Line(ix + 10, iy, ix + 20, iy);
+		skp->Line(ix - 10, iy, ix - 20, iy);
+		skp->Line(ix - 7, iy - 7, ix + 7, iy + 7);
+		skp->Line(ix - 7, iy + 7, ix + 7, iy - 7);
+	}
+
+	// Normal
+	OBJHANDLE oh = v->GetGravityRef();
+	OBJHANDLE vh = v->GetHandle();
+	VECTOR3 objv, shipv, objlv, shiplv, grav;
+	v->GetGlobalPos(shipv);
+	oapiGetGlobalPos(oh, &objv);
+	oapiGlobalToLocal(vh, &shipv, &shiplv);
+	oapiGlobalToLocal(vh, &objv, &objlv);
+	grav = shiplv - objlv; // Gravity vector in vessel coordinates
+	v1 = v2 = crossp(unit(fs.airspeed_vector), unit(grav)); // Normal vector in vessel coordinates
+	v1.x = 0;
+	v2.y = 0;
+	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
+	alpha *= sgn(v2.x);
+	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
+	beta *= sgn(v1.y);
+	CalcVectors(alpha, beta, bank, x, y);
+	ix = (int)x, iy = (int)y;
+	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		skp->SetBrush(brushNormal);
+		skp->SetPen(penNormal);
+		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+		skp->Line(ix - cw*dx*nmlScale, iy + ch*dy*nmlScale, ix + cw*dx*nmlScale, iy + ch*dy*nmlScale);
+		skp->Line(ix - cw*dx*nmlScale, iy + ch*dy*nmlScale, ix, iy - ch*nmlScale);
+		skp->Line(ix, iy - ch*nmlScale, ix + cw*dx*nmlScale, iy + ch*dy*nmlScale);
+	}
+
+	// Anti-Normal
+	v1 = v2 = -crossp(unit(fs.airspeed_vector), unit(grav)); // Antinormal vector in vessel coordinates
+	v1.x = 0;
+	v2.y = 0;
+	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
+	alpha *= sgn(v2.x);
+	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
+	beta *= sgn(v1.y);
+	CalcVectors(alpha, beta, bank, x, y);
+	ix = (int)x, iy = (int)y;
+	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		skp->SetBrush(brushNormal);
+		skp->SetPen(penNormal);
+		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+		skp->Line(ix - cw*dx*nmlScale, iy - ch*dy*nmlScale, ix + cw*dx*nmlScale, iy - ch*dy*nmlScale);
+		skp->Line(ix - cw*dx*nmlScale, iy - ch*dy*nmlScale, ix, iy + ch*nmlScale);
+		skp->Line(ix, iy + ch*nmlScale, ix + cw*dx*nmlScale, iy - ch*dy*nmlScale);
+	}
+
 }
 
 template<class T>

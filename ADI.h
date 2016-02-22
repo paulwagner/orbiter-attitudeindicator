@@ -18,6 +18,9 @@ const float RADf = (float)RAD;
 #define RED RGB(255,0,0)
 #define GREEN RGB(0,255,0)
 #define BLUE RGB(0,0,255)
+#define PROGRADE RGB(221,255,0)
+#define NORMAL RGB(235,11,255)
+#define RADIAL RGB(9,254,239)
 
 class AttitudeReferenceADI;
 
@@ -28,11 +31,13 @@ public:
 	virtual void DrawBall(oapi::Sketchpad* skp, double zoom);
 protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial;
+	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial;
 
 	void DrawSurfaceText(oapi::Sketchpad* skp);
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);
 	void DrawVectors(oapi::Sketchpad* skp);
+	void CalcVectors(double alpha, double beta, double bank, double& x, double& y);
 
 private:
 	void CreateDisplayLists();
