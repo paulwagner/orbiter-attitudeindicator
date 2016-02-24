@@ -35,7 +35,7 @@
 #define S_TURNVEC_B "turnVectorB"
 
 typedef struct {
-	char* texturePath;
+	char *texturePath;
 	DWORD progradeColor;
 	DWORD normalColor;
 	DWORD radialColor;
@@ -46,7 +46,8 @@ typedef struct {
 
 class Configuration {
 public:
-	Configuration ();
+	Configuration();
+	~Configuration();
   bool loadConfig(const char* file);
   CONFIGURATION &getConfig();
 protected:
