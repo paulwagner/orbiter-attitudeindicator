@@ -13,6 +13,10 @@
 #define WING WHITE
 #define INDICATOR WHITE
 #define TURNVECTOR WHITE
+#define STARTPROGRADE TRUE
+#define STARTNORMAL TRUE
+#define STARTRADIAL TRUE
+#define STARTTURNVEC FALSE
 
 #define S_TEXTUREPATH "texture"
 #define S_PROGRADE_R "progradeR"
@@ -33,6 +37,10 @@
 #define S_TURNVEC_R "turnVectorR"
 #define S_TURNVEC_G "turnVectorG"
 #define S_TURNVEC_B "turnVectorB"
+#define S_PROGRADE_START "startPrograde"
+#define S_NORMAL_START "startNormal"
+#define S_RADIAL_START "startRadial"
+#define S_TURNVEC_START "startTurnVector"
 
 typedef struct {
 	char *texturePath;
@@ -42,6 +50,10 @@ typedef struct {
 	DWORD wingColor;
 	DWORD indicatorColor;
 	DWORD turnVecColor;
+	bool startPrograde;
+	bool startNormal;
+	bool startRadial;
+	bool startTurnVector;
 } CONFIGURATION;
 
 class Configuration {

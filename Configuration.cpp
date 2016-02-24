@@ -9,6 +9,10 @@ Configuration::Configuration () {
 	config.indicatorColor = INDICATOR;
 	config.turnVecColor = TURNVECTOR;
 	config.texturePath = 0;
+	config.startPrograde = STARTPROGRADE;
+	config.startNormal = STARTNORMAL;
+	config.startRadial = STARTRADIAL;
+	config.startTurnVector = STARTTURNVEC;
 }
 
 Configuration::~Configuration() {
@@ -48,6 +52,10 @@ bool Configuration::loadConfig(const char* file) {
 	oapiReadItem_int(fh, S_TURNVEC_G, g);
 	oapiReadItem_int(fh, S_TURNVEC_B, b);
 	config.turnVecColor = RGB(r, g, b);
+	oapiReadItem_bool(fh, S_PROGRADE_START, config.startPrograde);
+	oapiReadItem_bool(fh, S_NORMAL_START, config.startNormal);
+	oapiReadItem_bool(fh, S_RADIAL_START, config.startRadial);
+	oapiReadItem_bool(fh, S_TURNVEC_START, config.startTurnVector);
 	oapiCloseFile(fh, FILE_IN);
 	return true;
 }

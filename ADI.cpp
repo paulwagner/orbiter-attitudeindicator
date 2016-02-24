@@ -30,6 +30,11 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	brushNormal = oapiCreateBrush(config.normalColor);
 	brushRadial = oapiCreateBrush(config.radialColor);
 
+	drawPrograde = config.startPrograde;
+	drawNormal = config.startNormal;
+	drawRadial = config.startRadial;
+	drawTurnVector = config.startTurnVector;
+
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
 	GLuint      PixelFormat;  
@@ -328,8 +333,9 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	DrawVectors(skp);
 	if (!useTexture)
 		DrawSurfaceText(skp);
+	if (drawTurnVector)
+		DrawTurnVector(skp);
 	DrawWing(skp);
-	//DrawTurnVector(skp);
 }
 
 void ADI::GetOpenGLRotMatrix(double* m) {
@@ -547,70 +553,73 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	double betaF = 1.2;
 
 	// Prograde
-	double d = sin(45 * RAD);
-	CalcVectors(fs.airspeed_vector, bank, x, y, alpha, beta);
-	ix = (int)x, iy = (int)y;
-	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
-		skp->SetPen(penGrad);
-		skp->SetBrush(brushGrad);
-		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-		skp->SetBrush(NULL);
-		skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
-		skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
-		skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
-		skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
-	}
+	if (drawPrograde) {
+		double d = sin(45 * RAD);
+		CalcVectors(fs.airspeed_vector, bank, x, y, alpha, beta);
+		ix = (int)x, iy = (int)y;
+		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+			skp->SetPen(penGrad);
+			skp->SetBrush(brushGrad);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
+			skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
+			skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
+		}
 
-	// Retrograde
-	CalcVectors(-fs.airspeed_vector, bank, x, y, alpha, beta);
-	ix = (int)x, iy = (int)y;
-	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
-		skp->SetPen(penGrad);
-		skp->SetBrush(NULL);
-		skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
-		skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
-		skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
-		skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
-		skp->Line(ix - (int)(cw*d), iy - (int)(ch*d), ix + (int)(cw*d), iy + (int)(ch*d));
-		skp->Line(ix - (int)(cw*d), iy + (int)(ch*d), ix + (int)(cw*d), iy - (int)(ch*d));
+		// Retrograde
+		CalcVectors(-fs.airspeed_vector, bank, x, y, alpha, beta);
+		ix = (int)x, iy = (int)y;
+		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+			skp->SetPen(penGrad);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
+			skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
+			skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
+			skp->Line(ix - (int)(cw*d), iy - (int)(ch*d), ix + (int)(cw*d), iy + (int)(ch*d));
+			skp->Line(ix - (int)(cw*d), iy + (int)(ch*d), ix + (int)(cw*d), iy - (int)(ch*d));
+		}
 	}
 
 	// Normal
-	double dx = cos(30 * RAD);
-	double dy = cos(30 * RAD);
-	double nmlScale = 1.2;
-	OBJHANDLE oh = v->GetGravityRef();
-	OBJHANDLE vh = v->GetHandle();
-	VECTOR3 objv, shipv, objlv, shiplv, grav;
-	v->GetGlobalPos(shipv);
-	oapiGetGlobalPos(oh, &objv);
-	oapiGlobalToLocal(vh, &shipv, &shiplv);
-	oapiGlobalToLocal(vh, &objv, &objlv);
-	grav = shiplv - objlv; // Gravity vector in vessel coordinates
-	VECTOR3 nml = crossp(unit(fs.airspeed_vector), unit(grav));
-	CalcVectors(nml, bank, x, y, alpha, beta);
-	ix = (int)x, iy = (int)y;
-	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
-		skp->SetBrush(brushNormal);
-		skp->SetPen(penNormal);
-		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-		skp->Line(ix - (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale));
-		skp->Line(ix - (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale), ix, iy - (int)(ch*nmlScale));
-		skp->Line(ix, iy - (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale));
-	}
+	if (drawNormal){
+		double dx = cos(30 * RAD);
+		double dy = cos(30 * RAD);
+		double nmlScale = 1.2;
+		OBJHANDLE oh = v->GetGravityRef();
+		OBJHANDLE vh = v->GetHandle();
+		VECTOR3 objv, shipv, objlv, shiplv, grav;
+		v->GetGlobalPos(shipv);
+		oapiGetGlobalPos(oh, &objv);
+		oapiGlobalToLocal(vh, &shipv, &shiplv);
+		oapiGlobalToLocal(vh, &objv, &objlv);
+		grav = shiplv - objlv; // Gravity vector in vessel coordinates
+		VECTOR3 nml = crossp(unit(fs.airspeed_vector), unit(grav));
+		CalcVectors(nml, bank, x, y, alpha, beta);
+		ix = (int)x, iy = (int)y;
+		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+			skp->SetBrush(brushNormal);
+			skp->SetPen(penNormal);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->Line(ix - (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale));
+			skp->Line(ix - (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale), ix, iy - (int)(ch*nmlScale));
+			skp->Line(ix, iy - (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy + (int)(ch*dy*nmlScale));
+		}
 
-	// Anti-Normal
-	CalcVectors(-nml, bank, x, y, alpha, beta);
-	ix = (int)x, iy = (int)y;
-	if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
-		skp->SetBrush(brushNormal);
-		skp->SetPen(penNormal);
-		skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-		skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
-		skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix, iy + (int)(ch*nmlScale));
-		skp->Line(ix, iy + (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
+		// Anti-Normal
+		CalcVectors(-nml, bank, x, y, alpha, beta);
+		ix = (int)x, iy = (int)y;
+		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+			skp->SetBrush(brushNormal);
+			skp->SetPen(penNormal);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
+			skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix, iy + (int)(ch*nmlScale));
+			skp->Line(ix, iy + (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
+		}
 	}
-
 }
 
 template<class T>

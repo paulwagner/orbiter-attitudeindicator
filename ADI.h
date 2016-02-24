@@ -23,6 +23,11 @@ public:
 	ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& texture);
 	~ADI();
 	virtual void DrawBall(oapi::Sketchpad* skp, double zoom);
+	void inline TogglePrograde(){ drawPrograde = !drawPrograde; }
+	void inline ToggleNormal(){ drawNormal = !drawNormal; }
+	void inline ToggleRadial(){ drawRadial = !drawRadial; }
+	void inline ToggleTurnVector(){ drawTurnVector = !drawTurnVector; }
+
 protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial;
 	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial;
@@ -43,6 +48,11 @@ private:
 	int width, height;
 	AttitudeReferenceADI* attref;
 	double cw, ch;
+
+	bool drawPrograde;
+	bool drawNormal;
+	bool drawRadial;
+	bool drawTurnVector;
 
 	//some stuff for OpenGL
 	HDC hDC;

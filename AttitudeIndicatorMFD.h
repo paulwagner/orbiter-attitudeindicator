@@ -1,17 +1,21 @@
 #ifndef __ATTITUDEINDICATORMFD_H
 #define __ATTITUDEINDICATORMFD_H
 
-#define DEFAULT_MODE 3
-#define DEFAULT_ZOOM 1
 #define CONFIG_FILE "MFD\\AttitudeIndicatorMFD.cfg"
+#define DEFAULT_FRAME 3
+#define DEFAULT_ZOOM 1
+#define DEFAULT_MODE 0
 
 class ADI;
 class AttitudeReferenceADI;
 class Configuration;
 
 // 0=ecliptic, 1=equator, 2=orbit, 3=local horizon, 4+ = NAV receiver
-const int modeCount = 5;
-const char* modeStrings[5] = { "ECL", "EQU", "ORB", "LOH", "NAV" };
+const int frmCount = 5;
+const char* frmStrings[5] = { "ECL", "EQU", "ORB", "LOH", "NAV" };
+
+// 0=normal, 1=big, 2=no indicators
+const int modeCount = 3;
 
 class AttitudeIndicatorMFD: public MFD2 {
 public:
@@ -30,6 +34,7 @@ protected:
 	ADI *adi;
 	void PostStep(double simt, double simdt, double mjd);
 	float zoom;
+	int frm;
 	int mode;
 
 };
