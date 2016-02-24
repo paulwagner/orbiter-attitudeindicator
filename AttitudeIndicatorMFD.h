@@ -1,8 +1,13 @@
 #ifndef __ATTITUDEINDICATORMFD_H
 #define __ATTITUDEINDICATORMFD_H
 
+#define DEFAULT_MODE 3
+#define DEFAULT_ZOOM 1
+#define CONFIG_FILE "MFD\\AttitudeIndicatorMFD.cfg"
+
 class ADI;
 class AttitudeReferenceADI;
+class Configuration;
 
 // 0=ecliptic, 1=equator, 2=orbit, 3=local horizon, 4+ = NAV receiver
 const int modeCount = 5;
@@ -20,8 +25,8 @@ public:
 	static int MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam);
 
 protected:
-	oapi::Font *font;
 	AttitudeReferenceADI *attref;
+	Configuration *config;
 	ADI *adi;
 	void PostStep(double simt, double simdt, double mjd);
 	float zoom;

@@ -105,14 +105,18 @@
     <ClCompile Include="AttitudeIndicatorMFD.cpp" />
     <ClCompile Include="AttitudeReferenceADI.cpp" />
     <ClCompile Include="attref.cpp" />
+    <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="FlightStatus.cpp" />
+    <ClCompile Include="imageloader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ADI.h" />
     <ClInclude Include="AttitudeIndicatorMFD.h" />
     <ClInclude Include="AttitudeReferenceADI.h" />
     <ClInclude Include="attref.h" />
+    <ClInclude Include="Configuration.h" />
     <ClInclude Include="FlightStatus.h" />
+    <ClInclude Include="imageloader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

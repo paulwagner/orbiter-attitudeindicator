@@ -6,6 +6,7 @@
 #include "ADI.h"
 #include "AttitudeReferenceADI.h"
 #include <sstream>
+#include "Configuration.h"
 
 // ==============================================================
 // Global variables
@@ -46,23 +47,26 @@ DLLCLBK void ExitModule (HINSTANCE hDLL)
 AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 : MFD2 (w, h, vessel)
 {
-	font = oapiCreateFont (w/20, true, "Arial", FONT_NORMAL, 450);
-	// Add MFD initialisation here
+	// MFD initialisation
 	g_AttitudeIndicatorMFD.CurrentMFD = this;
 	attref = new AttitudeReferenceADI(pV);
-	adi = new ADI(1, 1, w - 2, h * 2 / 3, attref, 10, 10);
-	zoom = 1;
-	mode = 3;
+	config = new Configuration();
+	if (!config->loadConfig(CONFIG_FILE)) {
+		oapiWriteLog("AttitudeIndicatorMFD::Failed to load config.");
+	}
+	adi = new ADI(1, 1, w - 2, h * 2 / 3, attref, 10, 10, config->getConfig());
+	zoom = DEFAULT_ZOOM;
+	mode = DEFAULT_MODE;
 	attref->SetMode(mode);
 }
 
 // Destructor
 AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 {
-	oapiReleaseFont (font);
-	// Add MFD cleanup code here
+	// MFD cleanup code
 	delete (attref);
 	delete (adi);
+	delete (config);
 }
 
 // Return button labels

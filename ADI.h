@@ -2,6 +2,7 @@
 #define _ADI_H_
 
 #include "orbitersdk.h"
+#include "Configuration.h"
 
 #define DL_HEMISPHERE		0
 #define DL_CIRCLE_XZ		1
@@ -14,19 +15,12 @@
 
 const float RADf = (float)RAD;
 
-#define WHITE RGB(255,255,255)
-#define RED RGB(255,0,0)
-#define GREEN RGB(0,255,0)
-#define BLUE RGB(0,0,255)
-#define PROGRADE RGB(221,255,0)
-#define NORMAL RGB(235,11,255)
-#define RADIAL RGB(9,254,239)
-
 class AttitudeReferenceADI;
+class Configuration;
 
 class ADI {
 public:
-	ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch);
+	ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& texture);
 	~ADI();
 	virtual void DrawBall(oapi::Sketchpad* skp, double zoom);
 protected:
@@ -58,6 +52,7 @@ private:
 	int displayLists[NUM_DLS];
 
 	double NSEW[8];
+
 };
 
 #endif

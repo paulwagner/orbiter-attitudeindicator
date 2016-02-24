@@ -3,8 +3,14 @@
 #include <gl/gl.h>
 #include <gl/glu.h>
 #include <sstream>
+#include "Configuration.h"
+#include "imageloader.h"
 
-ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch) {
+GLUquadric* quad;
+GLuint textureId;
+bool useTexture;
+
+ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config) {
 	this->x = x;
 	this->y = y;
 	this->width = width;
@@ -13,16 +19,16 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	this->cw = cw;
 	this->ch = ch;
 
-	penWing = oapiCreatePen(1, 2, WHITE);
-	penTurnVec = oapiCreatePen(1, 2, GREEN);
-	penGrad = oapiCreatePen(1, 2, PROGRADE);
-	penNormal = oapiCreatePen(1, 2, NORMAL);
-	penRadial = oapiCreatePen(1, 2, RADIAL);
-	brushWing = oapiCreateBrush(WHITE);
-	brushTurnVec = oapiCreateBrush(GREEN);
-	brushGrad = oapiCreateBrush(PROGRADE);
-	brushNormal = oapiCreateBrush(NORMAL);
-	brushRadial = oapiCreateBrush(RADIAL);
+	penWing = oapiCreatePen(1, 2, config.wingColor);
+	penTurnVec = oapiCreatePen(1, 2, config.turnVecColor);
+	penGrad = oapiCreatePen(1, 2, config.progradeColor);
+	penNormal = oapiCreatePen(1, 2, config.normalColor);
+	penRadial = oapiCreatePen(1, 2, config.radialColor);
+	brushWing = oapiCreateBrush(config.wingColor);
+	brushTurnVec = oapiCreateBrush(config.turnVecColor);
+	brushGrad = oapiCreateBrush(config.progradeColor);
+	brushNormal = oapiCreateBrush(config.normalColor);
+	brushRadial = oapiCreateBrush(config.radialColor);
 
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
@@ -73,16 +79,42 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	hRC=wglCreateContext(hDC);
 	ret=wglMakeCurrent(hDC,hRC);					//all standard OpenGL init so far
 
+	Image* texture = loadBMP(config.texturePath);
+	useTexture = (texture != NULL);
+	
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset (1.0, 2);
+	if (!useTexture) {
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_POLYGON_OFFSET_FILL);
+		glPolygonOffset (1.0, 2);
+	}
 
 	glViewport(0, 0, width, height);
 
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);           // Panel Background color
+	//glClearColor(0.0f, 0.0f, 0.0f, 0.0f);           // Panel Background color
 
-	CreateDisplayLists();
+	if (useTexture) {
+		glEnable(GL_NORMALIZE);
+		glEnable(GL_COLOR_MATERIAL);
+		quad = gluNewQuadric();
+
+		glGenTextures(1, &textureId); //Make room for our texture
+		glBindTexture(GL_TEXTURE_2D, textureId); //Tell OpenGL which texture to edit
+		//Map the image to the texture
+		glTexImage2D(GL_TEXTURE_2D,                //Always GL_TEXTURE_2D
+			0,                            //0 for now
+			GL_RGB,                       //Format OpenGL uses for image
+			texture->width, texture->height,  //Width and height
+			0,                            //The border of the image
+			GL_RGB, //GL_RGB, because pixels are stored in RGB format
+			GL_UNSIGNED_BYTE, //GL_UNSIGNED_BYTE, because pixels are stored as unsigned numbers
+			texture->pixels);               //The actual pixel data
+		delete texture;
+	}
+	else {
+		CreateDisplayLists();
+	}
+
 }
 
 ADI::~ADI() {
@@ -96,6 +128,8 @@ ADI::~ADI() {
 	delete brushGrad;
 	delete brushNormal;
 	delete brushRadial;
+	if (quad)
+		gluDeleteQuadric(quad);
 	wglMakeCurrent(NULL, NULL);	//standard OpenGL release
 	wglDeleteContext(hRC);
 	hRC=NULL;
@@ -243,9 +277,9 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	glLoadIdentity();
 
 	if (aspect > 1)  // wider than tall
-		glOrtho (-zoomd * aspect, zoomd * aspect, -zoomd, zoomd, 2.0, 4.0);
+		glOrtho(-zoomd * aspect, zoomd * aspect, -zoomd, zoomd, 2.0, 4.0);
 	else
-		glOrtho (-zoomd, zoomd, -zoomd / aspect, zoomd / aspect, 2.0, 4.0);
+		glOrtho(-zoomd, zoomd, -zoomd / aspect, zoomd / aspect, 2.0, 4.0);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
@@ -255,28 +289,45 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	GetOpenGLRotMatrix(m);
 	glMultMatrixd(m);
 
-	glCallList (displayLists[DL_BALL]);
+	if (useTexture) {
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, textureId);
 
-	glEnable(GL_LINE_STIPPLE);
-	glLineStipple(5, 0x5555);
+		glPushMatrix();
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glRotatef(-90, 1.0f, 0.0f, 0.0f); // Get texture to right position
+		gluQuadricTexture(quad, 1);
+		gluQuadricOrientation(quad, GLU_OUTSIDE);
+		gluSphere(quad, 1, 40, 40);
+		glPopMatrix();
+	} else {
+		glCallList(displayLists[DL_BALL]);
 
-	glColor3f (0.6f, 0.6f, 0.97f);				// TODO: sky line colour
-	glCallList (displayLists[DL_LATITUDE_MINOR]);
+		glEnable(GL_LINE_STIPPLE);
+		glLineStipple(5, 0x5555);
 
-	glPushMatrix();
-		glColor3f (1.0f, 0.5f, 0.28f);
-		glScalef (-1.0f, -1.0f, -1.0f);
-		glCallList (displayLists[DL_LATITUDE_MINOR]);
-	glPopMatrix();
+		glColor3f(0.6f, 0.6f, 0.97f);				// TODO: sky line colour
+		glCallList(displayLists[DL_LATITUDE_MINOR]);
 
-	glDisable(GL_LINE_STIPPLE);
+		glPushMatrix();
+		glColor3f(1.0f, 0.5f, 0.28f);
+		glScalef(-1.0f, -1.0f, -1.0f);
+		glCallList(displayLists[DL_LATITUDE_MINOR]);
+		glPopMatrix();
+
+		glDisable(GL_LINE_STIPPLE);
+	}
 
 	glFlush();
 	glFinish();
 	BitBlt (hDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
 
 	DrawVectors(skp);
-	DrawSurfaceText(skp);
+	if (!useTexture)
+		DrawSurfaceText(skp);
 	DrawWing(skp);
 	//DrawTurnVector(skp);
 }
