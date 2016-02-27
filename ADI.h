@@ -27,16 +27,18 @@ public:
 	void inline ToggleNormal(){ drawNormal = !drawNormal; }
 	void inline ToggleRadial(){ drawRadial = !drawRadial; }
 	void inline ToggleTurnVector(){ drawTurnVector = !drawTurnVector; }
+	void inline SetRateIndicators(bool draw){ drawRateIndicator = draw; }
 
 protected:
-	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial;
-	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial;
+	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penIndicators;
+	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial, *brushIndicators;
 
 	void DrawSurfaceText(oapi::Sketchpad* skp);
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);
 	void DrawVectors(oapi::Sketchpad* skp);
 	void CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta);
+	void DrawRateIndicators(oapi::Sketchpad* skp);
 
 private:
 	void CreateDisplayLists();
@@ -53,6 +55,7 @@ private:
 	bool drawNormal;
 	bool drawRadial;
 	bool drawTurnVector;
+	bool drawRateIndicator;
 
 	//some stuff for OpenGL
 	HDC hDC;

@@ -3,7 +3,7 @@
 
 #define CONFIG_FILE "MFD\\AttitudeIndicatorMFD.cfg"
 #define DEFAULT_FRAME 3
-#define DEFAULT_ZOOM 1
+#define DEFAULT_ZOOM 1.5
 #define DEFAULT_MODE 0
 
 class ADI;
@@ -33,9 +33,14 @@ protected:
 	Configuration *config;
 	ADI *adi;
 	void PostStep(double simt, double simdt, double mjd);
+	void CreateADI();
+	void DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height);
 	float zoom;
 	int frm;
 	int mode;
+private:
+	oapi::Pen *penBlue, *penGreen, *penWhite, *penBlack;
+	oapi::Brush *brushBlue, *brushGreen, *brushWhite, *brushBlack;
 
 };
 

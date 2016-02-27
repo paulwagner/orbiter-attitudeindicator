@@ -19,16 +19,18 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	this->cw = cw;
 	this->ch = ch;
 
-	penWing = oapiCreatePen(1, 2, config.wingColor);
+	penWing = oapiCreatePen(1, 3, config.wingColor);
 	penTurnVec = oapiCreatePen(1, 2, config.turnVecColor);
-	penGrad = oapiCreatePen(1, 2, config.progradeColor);
-	penNormal = oapiCreatePen(1, 2, config.normalColor);
-	penRadial = oapiCreatePen(1, 2, config.radialColor);
+	penGrad = oapiCreatePen(1, 3, config.progradeColor);
+	penNormal = oapiCreatePen(1, 3, config.normalColor);
+	penRadial = oapiCreatePen(1, 3, config.radialColor);
+	penIndicators = oapiCreatePen(1, 2, config.indicatorColor);
 	brushWing = oapiCreateBrush(config.wingColor);
 	brushTurnVec = oapiCreateBrush(config.turnVecColor);
 	brushGrad = oapiCreateBrush(config.progradeColor);
 	brushNormal = oapiCreateBrush(config.normalColor);
 	brushRadial = oapiCreateBrush(config.radialColor);
+	brushIndicators = oapiCreateBrush(config.indicatorColor);
 
 	drawPrograde = config.startPrograde;
 	drawNormal = config.startNormal;
@@ -128,11 +130,13 @@ ADI::~ADI() {
 	delete penGrad;
 	delete penNormal;
 	delete penRadial;
+	delete penIndicators;
 	delete brushWing;
 	delete brushTurnVec;
 	delete brushGrad;
 	delete brushNormal;
 	delete brushRadial;
+	delete brushIndicators;
 	if (quad)
 		gluDeleteQuadric(quad);
 	wglMakeCurrent(NULL, NULL);	//standard OpenGL release
@@ -299,10 +303,8 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 		glBindTexture(GL_TEXTURE_2D, textureId);
 
 		glPushMatrix();
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glRotatef(-90, 1.0f, 0.0f, 0.0f); // Get texture to right position
 		gluQuadricTexture(quad, 1);
 		gluQuadricOrientation(quad, GLU_OUTSIDE);
@@ -335,6 +337,8 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 		DrawSurfaceText(skp);
 	if (drawTurnVector)
 		DrawTurnVector(skp);
+	if (drawRateIndicator)
+		DrawRateIndicators(skp);
 	DrawWing(skp);
 }
 
@@ -452,7 +456,8 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->LineTo(width / 2, height / 2 + (int)ch);
 	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 2);
 	skp->LineTo(width / 2 + (int)(cw * 4), height / 2);
-	skp->Ellipse(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
+	skp->Rectangle(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
+	//skp->Ellipse(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
 	//skp->MoveTo(width / 2 - 40, height / 2);
 	//skp->LineTo(width / 2 - 15, height / 2);
 	//skp->LineTo(width / 2, height / 2 + 10);
@@ -492,6 +497,7 @@ void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 
 	// Draw vector
 	skp->SetPen(penTurnVec);
+	skp->SetBrush(0);
 	skp->MoveTo(width / 2, height / 2);
 	//int x = int((float)turnVector[0] + 0.5);
 	//int y = int((float)turnVector[1] + 0.5);
@@ -585,9 +591,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 
 	// Normal
 	if (drawNormal){
-		double dx = cos(30 * RAD);
-		double dy = cos(30 * RAD);
-		double nmlScale = 1.2;
+		double dx = sin(60 * RAD);
+		double dy = sin(30 * RAD);
+		double nmlScale = 1.5;
 		OBJHANDLE oh = v->GetGravityRef();
 		OBJHANDLE vh = v->GetHandle();
 		VECTOR3 objv, shipv, objlv, shiplv, grav;
@@ -620,6 +626,44 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Line(ix, iy + (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
 		}
 	}
+}
+
+void ADI::DrawRateIndicators(oapi::Sketchpad* skp) {
+	skp->SetPen(penIndicators);
+	skp->SetBrush(NULL);
+	int border = 10;
+	int rwidth = 25;
+	//skp->Rectangle(border, height / 4, border + rwidth, height * 3 / 4);
+	//skp->Line(border, height / 2, border + rwidth, height / 2);
+	skp->Rectangle(width - border - rwidth, height / 4, width - border, height * 3 / 4);
+	skp->Line(width - border - rwidth, height / 2, width - border, height / 2);
+	skp->Rectangle(width / 4, border, width * 3 / 4, border + rwidth);
+	skp->Line(width / 2, border, width / 2, border + rwidth);
+	skp->Rectangle(width / 4, height - border - rwidth, width * 3 / 4, height - border);
+	skp->Line(width / 2, height - border, width / 2, height - border - rwidth);
+
+	skp->SetBrush(brushIndicators);
+	FLIGHTSTATUS fs = attref->GetFlightStatus();
+	//double spitch = fs.pitchrate / 45;
+	//CheckRange(spitch, -1.0, 1.0);
+	//int pitchrect = (int)(spitch * (double)height / 4);
+	//skp->Rectangle(border, height / 2, border + rwidth, (height / 2) + pitchrect);
+	//double syaw = fs.yawrate / 45;
+	//CheckRange(syaw, -1.0, 1.0);
+	//int yawrect = (int)(syaw * (double)height / 4);
+	//skp->Rectangle(width - border - rwidth, height / 2, width - border, (height / 2) + yawrect);
+	double spitch = fs.pitchrate / 45;
+	CheckRange(spitch, -1.0, 1.0);
+	int pitchrect = (int)(spitch * (double)height / 4);
+	skp->Rectangle(width - border - rwidth, height / 2, width - border, (height / 2) + pitchrect);
+	double sroll = fs.rollrate / 45;
+	CheckRange(sroll, -1.0, 1.0);
+	int rollrect = (int)(sroll * (double)width / 4);
+	skp->Rectangle(width / 2, border, (width / 2) + rollrect, border + rwidth);
+	double syaw = fs.yawrate / 45;
+	CheckRange(syaw, -1.0, 1.0);
+	int yawrect = (int)(syaw * (double)width / 4);
+	skp->Rectangle(width / 2, height - border, (width / 2) + yawrect, height - border - rwidth);
 }
 
 template<class T>

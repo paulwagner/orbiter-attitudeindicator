@@ -47,6 +47,14 @@ DLLCLBK void ExitModule (HINSTANCE hDLL)
 AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 : MFD2 (w, h, vessel)
 {
+	penBlue = oapiCreatePen(1, 1, BLUE);
+	penGreen = oapiCreatePen(1, 1, GREEN);
+	penWhite = oapiCreatePen(1, 1, WHITE);
+	penBlack = oapiCreatePen(1, 1, BLACK);
+	brushBlue = oapiCreateBrush(BLUE);
+	brushGreen = oapiCreateBrush(GREEN);
+	brushWhite = oapiCreateBrush(WHITE);
+	brushBlack = oapiCreateBrush(BLACK);
 	// MFD initialisation
 	g_AttitudeIndicatorMFD.CurrentMFD = this;
 	attref = new AttitudeReferenceADI(pV);
@@ -54,7 +62,7 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	if (!config->loadConfig(CONFIG_FILE)) {
 		oapiWriteLog("AttitudeIndicatorMFD::Failed to load config.");
 	}
-	adi = new ADI(1, 1, w - 2, h * 2 / 3, attref, 10, 10, config->getConfig());
+	CreateADI();
 	zoom = DEFAULT_ZOOM;
 	mode = DEFAULT_MODE;
 	frm = DEFAULT_FRAME;
@@ -68,6 +76,31 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	delete (attref);
 	delete (adi);
 	delete (config);
+	delete (penBlue);
+	delete (penGreen);
+	delete (penWhite);
+	delete (penBlack);
+	delete (brushBlue);
+	delete (brushGreen);
+	delete (brushWhite);
+	delete (brushBlack);
+}
+
+void AttitudeIndicatorMFD::CreateADI() {
+	if (adi)
+		delete adi;
+	switch (mode) {
+	case 0:
+		adi = new ADI(1, 1, W - 2, H * 2 / 3, attref, 15, 15, config->getConfig());
+		break;
+	case 1:
+	case 2:
+		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
+		break;
+	default:
+		break;
+	}
+	adi->SetRateIndicators(mode != 2);
 }
 
 // Return button labels
@@ -113,7 +146,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		return true;
 	case OAPI_KEY_M:
 		mode = (mode + 1) % modeCount;
-		// TODO: Implement mode
+		CreateADI();
 		return true;
 	case OAPI_KEY_P:
 		adi->TogglePrograde();
@@ -169,17 +202,111 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
 	}
 	adi->DrawBall(skp, zoom);
 
+	if (mode == 0)
+		DrawDataField(skp, 1, (H * 2 / 3) + 1, W - 2, (H / 3) - 2);
+
 	skp->SetTextColor(WHITE);
 	std::ostringstream sstream;
-	sstream << "Frame: " << frmStrings[frm];
-	skp->Text(10, 10, sstream.str().c_str(), sstream.str().length());
+	sstream << "Frm: " << frmStrings[frm];
+	//skp->Text(15, 15, sstream.str().c_str(), sstream.str().length());
 	char buf[50];
 	if (attref->GetReferenceName(buf, 50)) {
 		std::string str = "Ref: ";
 		str.append(buf);
-		skp->Text(W/2 + 10, 10, str.c_str(), str.length());
+		//skp->Text(W/2 + 15, 15, str.c_str(), str.length());
 	}
 	return true;
+}
+
+void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height) {
+	std::string s;
+	// Set font
+
+	// Draw text
+	skp->SetTextColor(WHITE);
+	/*
+	skp->Text(x, y, frmStrings[frm], strlen(frmStrings[frm]));
+	char buf[20];
+	attref->GetReferenceName(buf, 20);
+	skp->Text(x + width / 4, y, buf, strlen(buf));
+	*/
+
+	// Layout control points
+	int cp1_x = x + width / 4;
+	int cp1_y = y + 35; // Compass height
+	int cp2_x = x + width * 3 / 4;
+	int cp2_y = y;
+
+	// Draw compass
+	skp->SetPen(penBlue);
+	skp->SetBrush(brushBlue);
+	skp->Rectangle(cp1_x, cp1_y, cp2_x, cp2_y);
+	int degs = 70; // Degrees visible in compass
+	int degpx = (int)(width / 2 / (double)degs); // Pixel per degree
+	if (degpx <= 0)
+		degpx = 1;
+	int heading = (int)(attref->GetFlightStatus().heading);
+	skp->SetPen(penWhite);
+	skp->SetBrush(brushWhite);
+	skp->SetTextColor(WHITE);
+	int h = (heading - degs/2) % 360;
+	for (int tx = (width / 4); tx <= (width * 3 / 4); tx += degpx) {
+		if (h % 10 == 0) {
+			skp->Line(x + tx, cp1_y, x + tx, cp1_y - 10);
+		}
+		else if (h % 2 == 0) {
+			skp->Line(x + tx, cp1_y, x + tx, cp1_y - 5);
+		}
+		if (h % 30 == 0) {
+			switch (h) {
+			case 0:	  {s = "N"; break; }
+			case 90:  {s = "E"; break; }
+			case 180: {s = "S"; break; }
+			case 270: {s = "W"; break; }
+			default:  {s = std::to_string(h); break; }
+			}
+			//s = std::to_string(h);
+			int tw = skp->GetTextWidth(s.c_str());
+			int th = skp->GetCharSize() & 0xFFFF;
+			skp->Text(x + tx - (tw / 2), cp1_y - 15 - th, s.c_str(), s.length());
+		}
+		h++;
+		h %= 360;
+	}
+	s = std::to_string(heading);
+	skp->SetPen(penGreen);
+	skp->Line(width / 2, cp1_y, width / 2, cp2_y);
+	int tw = skp->GetTextWidth(s.c_str());
+	skp->SetPen(penBlack);
+	skp->SetBrush(brushBlack);
+	skp->Rectangle((width / 2) - (tw / 2), cp2_y, (width / 2) + (tw / 2), cp1_y - 12);
+	skp->SetBrush(NULL);
+	skp->SetPen(penGreen);
+	skp->Rectangle((width / 2) - (tw / 2), cp2_y, (width / 2) + (tw / 2), cp1_y - 12);
+	skp->SetTextColor(GREEN);
+	skp->TextBox((width / 2) - (tw / 2), cp2_y, (width / 2) + (tw / 2), cp1_y - 12, s.c_str(), s.length());
+
+	skp->SetPen(penBlue);
+	skp->SetBrush(brushBlue);
+	skp->SetTextColor(GREEN);
+	
+	// Draw velocity
+	skp->Rectangle(cp1_x, cp1_y, x, y + height);
+	skp->TextBox(x, y, cp1_x, cp1_y - 5, "OS m/s", 6);
+
+	// Draw altitude
+	skp->Rectangle(cp2_x, cp1_y, x + width, y + height);
+	skp->TextBox(cp2_x, cp2_y, x + width, cp1_y - 5, "ALT km", 6);
+
+	// Draw text
+	
+	skp->SetTextColor(WHITE);
+	skp->TextBox(cp1_x, cp1_y, width / 2, 2 * cp1_y, frmStrings[frm], strlen(frmStrings[frm]));
+	char buf[50];
+	if (attref->GetReferenceName(buf, 50)) {
+		skp->TextBox(width / 2, cp1_y, cp2_x, 2 * cp1_y, buf, strlen(buf));
+	}
+
 }
 
 // MFD message parser
