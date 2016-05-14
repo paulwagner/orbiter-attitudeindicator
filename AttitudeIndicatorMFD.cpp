@@ -62,10 +62,10 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	if (!config->loadConfig(CONFIG_FILE)) {
 		oapiWriteLog("AttitudeIndicatorMFD::Failed to load config.");
 	}
-	CreateADI();
 	zoom = DEFAULT_ZOOM;
 	mode = DEFAULT_MODE;
 	frm = DEFAULT_FRAME;
+	CreateADI();
 	attref->SetMode(frm);
 }
 
@@ -98,6 +98,8 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	default:
+		oapiWriteLog("AttitudeIndicatorMFD::ERROR! Invalid mode flag. Defaulting.");
+		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	}
 	adi->SetRateIndicators(mode != 2);
