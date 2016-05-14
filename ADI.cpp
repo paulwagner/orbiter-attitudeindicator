@@ -466,30 +466,9 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 }
 
 void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
-	// Yaw = -heading?
-	GLdouble model[16];
-	GLdouble proj[16];
-	GLint view[4];
-	GLdouble z;
-
-	GLdouble fp[3];
-	float fpPitch, fpHeading;
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-
-	glGetDoublev(GL_MODELVIEW_MATRIX, model);
-	glGetDoublev(GL_PROJECTION_MATRIX, proj);
-	glGetIntegerv(GL_VIEWPORT, view);
-
-	fpPitch = (float)(fs.pitch + fs.pitchrate * 3);
-	fpHeading = (float)(fs.yaw + fs.yawrate * 3);
-
-	fp[0] = cos(fpPitch*RADf) * sin(fpHeading*RADf);
-	fp[1] = sin(fpPitch*RADf);
-	fp[2] = cos(fpPitch*RADf) * cos(fpHeading*RADf);
-
-	double pitchProj, yawProj;
-	gluProject(fp[0], fp[1], fp[2], model, proj, view, &yawProj, &pitchProj, &z);
-
+	double yawProj = (1 + fs.yawrate*RADf) * ((double)width / 2);
+	double pitchProj = (1 + fs.pitchrate*RADf) * ((double)height / 2);
 	CheckRange(yawProj, (double)0, (double)width);
 	CheckRange(pitchProj, (double)0, (double)height);
 	pitchProj = height - pitchProj; // invert y coords
@@ -499,8 +478,6 @@ void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 	skp->SetPen(penTurnVec);
 	skp->SetBrush(0);
 	skp->MoveTo(width / 2, height / 2);
-	//int x = int((float)turnVector[0] + 0.5);
-	//int y = int((float)turnVector[1] + 0.5);
 	skp->LineTo(int(yawProj+0.5), int(pitchProj+0.5));
 	int offset = int((roll*min(width, height) / 2) + 0.5);
 	skp->Ellipse(width / 2 - offset, height / 2 - offset, width / 2 + offset, height / 2 + offset);
