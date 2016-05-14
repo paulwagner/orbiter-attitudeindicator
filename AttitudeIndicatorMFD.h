@@ -12,10 +12,10 @@ class Configuration;
 
 // 0=ecliptic, 1=equator, 2=orbit, 3=local horizon, 4+ = NAV receiver
 const int frmCount = 5;
-const char* frmStrings[5] = { "ECL", "EQU", "ORB", "LOH", "NAV" };
+const char* frmStrings[5] = { "ECL", "EQU", "OV/OM", "LH/LN", "NAV" };
 
-// 0=normal, 1=big, 2=no indicators
-const int modeCount = 3;
+// 0=normal, 1=no indicators, 2=big, 3=no indicators big
+const int modeCount = 4;
 
 class AttitudeIndicatorMFD: public MFD2 {
 public:

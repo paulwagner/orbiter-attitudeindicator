@@ -91,10 +91,11 @@ void AttitudeIndicatorMFD::CreateADI() {
 		delete adi;
 	switch (mode) {
 	case 0:
+	case 1:
 		adi = new ADI(1, 1, W - 2, H * 2 / 3, attref, 15, 15, config->getConfig());
 		break;
-	case 1:
 	case 2:
+	case 3:
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	default:
@@ -102,7 +103,7 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	}
-	adi->SetRateIndicators(mode != 2);
+	adi->SetRateIndicators(mode % 2 != 1);
 }
 
 // Return button labels
@@ -204,7 +205,7 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
 	}
 	adi->DrawBall(skp, zoom);
 
-	if (mode == 0)
+	if (mode <= 1)
 		DrawDataField(skp, 1, (H * 2 / 3) + 1, W - 2, (H / 3) - 2);
 
 	skp->SetTextColor(WHITE);
