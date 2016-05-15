@@ -13,6 +13,8 @@ typedef struct {
 	double yawrate;
 	double rollrate;
 	VECTOR3 airspeed_vector;
+	double tas;
+	double os;
 	double apoapsis;
 	double periapsis;
 } FLIGHTSTATUS;

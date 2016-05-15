@@ -16,6 +16,14 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	double body_rad = oapiGetSize(body);
 	fs.apoapsis -= body_rad;
 	fs.periapsis -= body_rad;
+	ELEMENTS elem;
+	double mjd;
+	//ORBITPARAM orbitparam;
+	//GetVessel()->GetElements(body, elem, &orbitparam, 0, FRAME_EQU);
+	GetVessel()->GetElements(elem, mjd);
+	double m = oapiGetMass(body);
+	fs.os = sqrt(GGRAV * m * (2 / body_rad - 1 / elem.a));
+	fs.tas = GetVessel()->GetAirspeed();
 	return fs;
 }
 
