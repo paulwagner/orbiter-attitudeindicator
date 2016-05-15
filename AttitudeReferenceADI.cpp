@@ -11,6 +11,11 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	GetVessel()->GetAngularVel(v);
 	fs.pitchrate = v.x*DEG; fs.rollrate = v.z*DEG; fs.yawrate = -v.y*DEG;
 	GetVessel()->GetShipAirspeedVector(fs.airspeed_vector);
+	OBJHANDLE body = GetVessel()->GetApDist(fs.apoapsis);
+	GetVessel()->GetPeDist(fs.periapsis);
+	double body_rad = oapiGetSize(body);
+	fs.apoapsis -= body_rad;
+	fs.periapsis -= body_rad;
 	return fs;
 }
 

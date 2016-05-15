@@ -49,10 +49,12 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 {
 	penBlue = oapiCreatePen(1, 1, BLUE);
 	penGreen = oapiCreatePen(1, 1, GREEN);
+	penRed = oapiCreatePen(1, 1, RED);
 	penWhite = oapiCreatePen(1, 1, WHITE);
 	penBlack = oapiCreatePen(1, 1, BLACK);
 	brushBlue = oapiCreateBrush(BLUE);
 	brushGreen = oapiCreateBrush(GREEN);
+	brushRed = oapiCreateBrush(RED);
 	brushWhite = oapiCreateBrush(WHITE);
 	brushBlack = oapiCreateBrush(BLACK);
 	// MFD initialisation
@@ -78,10 +80,12 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	delete (config);
 	delete (penBlue);
 	delete (penGreen);
+	delete (penRed);
 	delete (penWhite);
 	delete (penBlack);
 	delete (brushBlue);
 	delete (brushGreen);
+	delete (brushRed);
 	delete (brushWhite);
 	delete (brushBlack);
 }
@@ -207,16 +211,17 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
 
 	if (mode <= 1)
 		DrawDataField(skp, 1, (H * 2 / 3) + 1, W - 2, (H / 3) - 2);
-
-	skp->SetTextColor(WHITE);
-	std::ostringstream sstream;
-	sstream << "Frm: " << frmStrings[frm];
-	//skp->Text(15, 15, sstream.str().c_str(), sstream.str().length());
-	char buf[50];
-	if (attref->GetReferenceName(buf, 50)) {
-		std::string str = "Ref: ";
-		str.append(buf);
-		//skp->Text(W/2 + 15, 15, str.c_str(), str.length());
+	else {
+		skp->SetTextColor(WHITE);
+		std::ostringstream sstream;
+		sstream << "Frm: " << frmStrings[frm];
+		skp->Text(15, 15, sstream.str().c_str(), sstream.str().length());
+		char buf[50];
+		if (attref->GetReferenceName(buf, 50)) {
+			std::string str = "Ref: ";
+			str.append(buf);
+			skp->Text(W/2 + 15, 15, str.c_str(), str.length());
+		}
 	}
 	return true;
 }
@@ -252,7 +257,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->SetPen(penWhite);
 	skp->SetBrush(brushWhite);
 	skp->SetTextColor(WHITE);
-	int h = (heading - degs/2) % 360;
+	int h = (heading - degs / 2) % 360;
 	for (int tx = (width / 4); tx <= (width * 3 / 4); tx += degpx) {
 		if (h % 10 == 0) {
 			skp->Line(x + tx, cp1_y, x + tx, cp1_y - 10);
@@ -289,17 +294,115 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->SetTextColor(GREEN);
 	skp->TextBox((width / 2) - (tw / 2), cp2_y, (width / 2) + (tw / 2), cp1_y - 12, s.c_str(), s.length());
 
+	// Draw velocity
 	skp->SetPen(penBlue);
 	skp->SetBrush(brushBlue);
-	skp->SetTextColor(GREEN);
-	
-	// Draw velocity
+	skp->SetTextColor(WHITE);
 	skp->Rectangle(cp1_x, cp1_y, x, y + height);
 	skp->TextBox(x, y, cp1_x, cp1_y - 5, "OS m/s", 6);
 
 	// Draw altitude
+	skp->SetPen(penBlue);
+	skp->SetBrush(brushBlue);
+	skp->SetTextColor(WHITE);
 	skp->Rectangle(cp2_x, cp1_y, x + width, y + height);
 	skp->TextBox(cp2_x, cp2_y, x + width, cp1_y - 5, "ALT km", 6);
+	double altitude = (double)(attref->GetFlightStatus().altitude);
+	int scale = 25;
+	int ralt = (int)(round(altitude / (double)scale) * (double)scale);
+	int apoapsis = (int)(round(attref->GetFlightStatus().apoapsis / (double)scale) * (double)scale);
+	int periapsis = (int)(round(attref->GetFlightStatus().periapsis / (double)scale) * (double)scale);
+	int ty_apo = -1, ty_peri = -1;
+	int mid_y = cp1_y + (y + height - cp1_y) / 2;
+	for (int k = 0; k < 2; k++) {
+		int a = ralt - k * scale;
+		int ty = mid_y + k;
+		bool stop = true;
+		do {
+			if (a < 0)
+				break;
+			skp->SetPen(penWhite);
+			skp->SetBrush(brushWhite);
+			skp->SetTextColor(WHITE);
+			if (a % 1000 == 0) {
+				skp->Line(cp2_x, ty, cp2_x + 25, ty);
+				s = std::to_string(a / 1000);
+				int n = 5 - s.length();
+				if (n < 0) n = 0;
+				s.insert(0, n, '0');
+				int tw = skp->GetTextWidth(s.c_str());
+				int th = skp->GetCharSize() & 0xFFFF;
+				skp->Text(cp2_x + 35, ty - (th / 2), s.c_str(), s.length());
+			}
+			else if (a % 500 == 0) {
+				skp->Line(cp2_x, ty, cp2_x + 10, ty);
+			}
+			else if (a % 250 == 0) {
+				skp->Line(cp2_x, ty, cp2_x + 5, ty);
+			}
+			// Remember apoapsis and periapsis
+			if (a == apoapsis)
+				ty_apo = ty;
+			if (a == periapsis)
+				ty_peri = ty;
+			if (k == 0) {
+				a += scale;
+				stop = (ty <= cp1_y);
+				ty -= 1;
+			}
+			else {
+				a -= scale;
+				stop = (ty >= y + height);
+				ty += 1;
+			}
+		} while (!stop);
+	}
+	// Draw apoapsis and periapsis
+	if (ty_peri >= 0) {
+		s = "PE";
+		skp->SetPen(penRed);
+		skp->SetBrush(brushRed);
+		skp->Line(cp2_x, ty_peri, cp2_x + 15, ty_peri);
+		tw = skp->GetTextWidth(s.c_str());
+		int th = skp->GetCharSize() & 0xFFFF;
+		skp->Rectangle(cp2_x + 20, ty_peri - (th / 2), cp2_x + 20 + tw, ty_peri + (th / 2));
+		skp->SetTextColor(WHITE);
+		skp->TextBox(cp2_x + 20, ty_peri - (th / 2), cp2_x + 20 + tw, ty_peri + (th / 2), s.c_str(), s.length());
+	}
+	if (ty_apo >= 0) {
+		s = "AP";
+		skp->SetPen(penRed);
+		skp->SetBrush(brushRed);
+		skp->Line(cp2_x, ty_apo, cp2_x + 15, ty_apo);
+		tw = skp->GetTextWidth(s.c_str());
+		int th = skp->GetCharSize() & 0xFFFF;
+		skp->Rectangle(cp2_x + 20, ty_apo - (th / 2), cp2_x + 20 + tw, ty_apo + (th / 2));
+		skp->SetTextColor(WHITE);
+		skp->TextBox(cp2_x + 20, ty_apo - (th / 2), cp2_x + 20 + tw, ty_apo + (th / 2), s.c_str(), s.length());
+	}
+	// Draw current altitude
+	if (altitude < 100000) {
+		s = std::to_string(round((double)altitude / (double)10) / (double)100);
+		std::string::size_type n = s.find('.');
+		s = s.substr(0, n + 3);
+	}
+	else {
+		s = std::to_string(round((double)altitude / (double)100) / (double)10);
+		std::string::size_type n = s.find('.');
+		s = s.substr(0, n + 2);
+	}
+	skp->SetPen(penGreen);
+	skp->Line(cp2_x, mid_y, cp2_x + 30, mid_y);
+	tw = skp->GetTextWidth(s.c_str());
+	int th = skp->GetCharSize() & 0xFFFF;
+	skp->SetPen(penBlack);
+	skp->SetBrush(brushBlack);
+	skp->Rectangle(cp2_x + 35, mid_y - (th / 2), cp2_x + 35 + tw, mid_y + (th / 2));
+	skp->SetBrush(NULL);
+	skp->SetPen(penGreen);
+	skp->Rectangle(cp2_x + 35, mid_y - (th / 2), cp2_x + 35 + tw, mid_y + (th / 2));
+	skp->SetTextColor(GREEN);
+	skp->TextBox(cp2_x + 35, mid_y - (th / 2), cp2_x + 35 + tw, mid_y + (th / 2), s.c_str(), s.length());
 
 	// Draw text
 	

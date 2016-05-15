@@ -39,8 +39,8 @@ protected:
 	int frm;
 	int mode;
 private:
-	oapi::Pen *penBlue, *penGreen, *penWhite, *penBlack;
-	oapi::Brush *brushBlue, *brushGreen, *brushWhite, *brushBlack;
+	oapi::Pen *penBlue, *penGreen, *penRed, *penWhite, *penBlack;
+	oapi::Brush *brushBlue, *brushGreen, *brushRed, *brushWhite, *brushBlack;
 
 };
 
