@@ -17,13 +17,18 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	fs.apoapsis -= body_rad;
 	fs.periapsis -= body_rad;
 	ELEMENTS elem;
+	ORBITPARAM orbitparam;
 	double mjd;
-	//ORBITPARAM orbitparam;
-	//GetVessel()->GetElements(body, elem, &orbitparam, 0, FRAME_EQU);
-	GetVessel()->GetElements(elem, mjd);
+	int frm = FRAME_EQU;
+	if (GetMode() == 0) frm = FRAME_ECL;
+	GetVessel()->GetElements(body, elem, &orbitparam, 0, frm);
 	double m = oapiGetMass(body);
 	fs.os = sqrt(GGRAV * m * (2 / body_rad - 1 / elem.a));
 	fs.tas = GetVessel()->GetAirspeed();
+	fs.apoT = orbitparam.ApT;
+	fs.periT = orbitparam.PeT;
+	fs.ecc = elem.e;
+	fs.inc = elem.i;
 	return fs;
 }
 

@@ -17,6 +17,10 @@ typedef struct {
 	double os;
 	double apoapsis;
 	double periapsis;
+	double apoT;
+	double periT;
+	double ecc;
+	double inc;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {

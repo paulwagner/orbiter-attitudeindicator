@@ -5,6 +5,7 @@
 #define DEFAULT_FRAME 3
 #define DEFAULT_ZOOM 1.5
 #define DEFAULT_MODE 0
+#define DEFAULT_SPEED 0;
 
 class ADI;
 class AttitudeReferenceADI;
@@ -14,8 +15,11 @@ class Configuration;
 const int frmCount = 5;
 const char* frmStrings[5] = { "ECL", "EQU", "OV/OM", "LH/LN", "NAV" };
 
-// 0=normal, 1=no indicators, 2=big, 3=no indicators big
-const int modeCount = 4;
+// 0=normal, 2=big
+const int modeCount = 2;
+
+// 0=TAS, 1=OS
+const int speedCount = 2;
 
 class AttitudeIndicatorMFD: public MFD2 {
 public:
@@ -38,9 +42,12 @@ protected:
 	float zoom;
 	int frm;
 	int mode;
+	int speedMode;
 private:
 	oapi::Pen *penBlue, *penGreen, *penRed, *penWhite, *penBlack;
 	oapi::Brush *brushBlue, *brushGreen, *brushRed, *brushWhite, *brushBlack;
+
+	std::string convertAltString(double altitude);
 
 };
 

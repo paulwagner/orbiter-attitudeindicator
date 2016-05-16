@@ -27,7 +27,7 @@ public:
 	void inline ToggleNormal(){ drawNormal = !drawNormal; }
 	void inline ToggleRadial(){ drawRadial = !drawRadial; }
 	void inline ToggleTurnVector(){ drawTurnVector = !drawTurnVector; }
-	void inline SetRateIndicators(bool draw){ drawRateIndicator = draw; }
+	void inline ToggleRateIndicators(){ drawRateIndicator = !drawRateIndicator; }
 
 protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penIndicators;

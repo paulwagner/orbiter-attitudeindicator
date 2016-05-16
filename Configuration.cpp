@@ -13,6 +13,7 @@ Configuration::Configuration () {
 	config.startNormal = STARTNORMAL;
 	config.startRadial = STARTRADIAL;
 	config.startTurnVector = STARTTURNVEC;
+	config.startRateIndicator = STARTRATEINDICATOR;
 }
 
 Configuration::~Configuration() {
@@ -56,6 +57,7 @@ bool Configuration::loadConfig(const char* file) {
 	oapiReadItem_bool(fh, S_NORMAL_START, config.startNormal);
 	oapiReadItem_bool(fh, S_RADIAL_START, config.startRadial);
 	oapiReadItem_bool(fh, S_TURNVEC_START, config.startTurnVector);
+	oapiReadItem_bool(fh, S_RATEIND_START, config.startRateIndicator);
 	oapiCloseFile(fh, FILE_IN);
 	return true;
 }

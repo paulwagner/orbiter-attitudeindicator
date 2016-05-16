@@ -67,6 +67,7 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	zoom = DEFAULT_ZOOM;
 	mode = DEFAULT_MODE;
 	frm = DEFAULT_FRAME;
+	speedMode = DEFAULT_SPEED;
 	CreateADI();
 	attref->SetMode(frm);
 }
@@ -95,11 +96,9 @@ void AttitudeIndicatorMFD::CreateADI() {
 		delete adi;
 	switch (mode) {
 	case 0:
-	case 1:
 		adi = new ADI(1, 1, W - 2, H * 2 / 3, attref, 15, 15, config->getConfig());
 		break;
-	case 2:
-	case 3:
+	case 1:
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	default:
@@ -107,50 +106,47 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	}
-	adi->SetRateIndicators(mode % 2 != 1);
 }
 
 // Return button labels
 char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 {
 	// The labels for the buttons used by our MFD mode
-	static char *label[8] = {"FRM", "MOD", "PGD", "NRM", "RAD", "TRN", "Z+", "Z-"};
-	return (bt < 8 ? label[bt] : 0);
+	static char *label[10] = {"MOD", "PGD", "NRM", "RAD", "PRI", "TRN", "Z+", "Z-", "FRM", "SPD"};
+	return (bt < 10 ? label[bt] : 0);
 }
 
 // Return button menus
 int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 {
 	// The menu descriptions for the buttons
-	static const MFDBUTTONMENU mnu[8] = {
-		{ "Change Frame", 0, 'F' },
+	static const MFDBUTTONMENU mnu[10] = {
 		{ "Change Mode", 0, 'M' },
 		{ "Toggle Prograde/Retrograde", 0, 'P' },
 		{ "Toggle Normal/Antinormal", 0, 'N' },
 		{ "Toggle Radial/Antiradial", 0, 'R' },
-		{ "Toggle Turn Vector", 0, 'T' },
+		{ "Toggle Pitch Rate Indicators", 0, 'D' },
+		{ "Toggle Turn Vector Indicator", 0, 'T' },
 		{ "Zoom in", 0, 'I' },
-		{"Zoom out", 0, 'O'}
+		{"Zoom out", 0, 'O'},
+		{ "Change Frame", 0, 'F' },
+		{ "Change Speed", 0, 'S' }
 	};
 	if (menu) *menu = mnu;
-	return 8; // return the number of buttons used
+	return 10; // return the number of buttons used
 }
 
 bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 {
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
-	static const DWORD btkey[8] = { OAPI_KEY_F, OAPI_KEY_M, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_R, OAPI_KEY_T, OAPI_KEY_I, OAPI_KEY_O };
-	if (bt < 8) return ConsumeKeyBuffered(btkey[bt]);
+	static const DWORD btkey[10] = { OAPI_KEY_M, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_R, OAPI_KEY_D, OAPI_KEY_T, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_F, OAPI_KEY_S };
+	if (bt < 10) return ConsumeKeyBuffered(btkey[bt]);
 	else return false;
 }
 
 bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 {
 	switch (key) {
-	case OAPI_KEY_F:
-		frm = (frm + 1) % frmCount;
-		attref->SetMode(frm);
-		return true;
 	case OAPI_KEY_M:
 		mode = (mode + 1) % modeCount;
 		CreateADI();
@@ -164,6 +160,9 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_R:
 		adi->ToggleRadial();
 		return true;
+	case OAPI_KEY_D:
+		adi->ToggleRateIndicators();
+		return true;
 	case OAPI_KEY_T:
 		adi->ToggleTurnVector();
 		return true;
@@ -173,6 +172,13 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_O:
 		if (zoom > 0.5)
 			zoom -= 0.5;
+		return true;
+	case OAPI_KEY_F:
+		frm = (frm + 1) % frmCount;
+		attref->SetMode(frm);
+		return true;
+	case OAPI_KEY_S:
+		speedMode = (speedMode + 1) % speedCount;
 		return true;
 	}
 	return false;
@@ -209,18 +215,22 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
 	}
 	adi->DrawBall(skp, zoom);
 
-	if (mode <= 1)
+	if (mode == 0)
 		DrawDataField(skp, 1, (H * 2 / 3) + 1, W - 2, (H / 3) - 2);
 	else {
 		skp->SetTextColor(WHITE);
-		std::ostringstream sstream;
-		sstream << "Frm: " << frmStrings[frm];
-		skp->Text(15, 15, sstream.str().c_str(), sstream.str().length());
+		skp->SetBrush(brushBlack);
+		int th = skp->GetCharSize() & 0xFFFF;
+		int slen = strlen(frmStrings[frm]);
+		int swidth = skp->GetTextWidth(frmStrings[frm], slen);
+		skp->Rectangle(10, 5, 10 + swidth, 5 + th);
+		skp->TextBox(10, 5, 10 + swidth, 5 + th, frmStrings[frm], slen);
 		char buf[50];
 		if (attref->GetReferenceName(buf, 50)) {
-			std::string str = "Ref: ";
-			str.append(buf);
-			skp->Text(W/2 + 15, 15, str.c_str(), str.length());
+			slen = strlen(buf);
+			swidth = skp->GetTextWidth(buf, slen);
+			skp->Rectangle(W - swidth - 10, 5, W - 10, 5 + th);
+			skp->TextBox(W - swidth - 10, 5, W - 10, 5 + th, buf, slen);
 		}
 	}
 	return true;
@@ -240,9 +250,9 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	*/
 
 	// Layout control points
-	int cp1_x = x + width / 4;
+	int cp1_x = x + (width / 4) - 15;
 	int cp1_y = y + 35; // Compass height
-	int cp2_x = x + width * 3 / 4;
+	int cp2_x = x + (width * 3 / 4) + 15;
 	int cp2_y = y;
 
 	// Draw compass
@@ -281,7 +291,11 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		h++;
 		h %= 360;
 	}
+	// Draw current heading
 	s = std::to_string(heading);
+	int n = 3 - s.length();
+	if (n < 0) n = 0;
+	s.insert(0, n, '0');
 	skp->SetPen(penGreen);
 	skp->Line(width / 2, cp1_y, width / 2, cp2_y);
 	int tw = skp->GetTextWidth(s.c_str());
@@ -294,14 +308,23 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->SetTextColor(GREEN);
 	skp->TextBox((width / 2) - (tw / 2), cp2_y, (width / 2) + (tw / 2), cp1_y - 12, s.c_str(), s.length());
 
-	int cur_width = skp->GetTextWidth("00000");
+	int cur_width = skp->GetTextWidth("00000", 5);
 	// Draw velocity
 	skp->SetPen(penBlue);
 	skp->SetBrush(brushBlue);
 	skp->SetTextColor(WHITE);
 	skp->Rectangle(cp1_x, cp1_y, x, y + height);
-	skp->TextBox(x + 5, y + 5, cp1_x - 5, cp1_y - 5, "OS m/s", 6);
-	double airspeed = (double)(attref->GetFlightStatus().os);
+	double airspeed = 0;
+	std::string spd;
+	if (speedMode == 0) {
+		airspeed = (double)(attref->GetFlightStatus().tas);
+		spd = "TAS m/s";
+	}
+	else{
+		airspeed = (double)(attref->GetFlightStatus().os);
+		spd = "OS m/s";
+	}
+	skp->TextBox(x + 10, y + 7, cp1_x, cp1_y, spd.c_str(), spd.length());
 	int scale = 25;
 	int rspd = (int)(round(airspeed*10 / (double)scale) * (double)scale);
 	int mid_y = cp1_y + (y + height - cp1_y) / 2;
@@ -343,7 +366,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			}
 		} while (!stop);
 	}
-	// Draw current spped
+	// Draw current speed
 	if (airspeed < 10) {
 		s = std::to_string(round((double)airspeed * (double)100) / (double)100);
 		std::string::size_type n = s.find('.');
@@ -376,7 +399,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->SetBrush(brushBlue);
 	skp->SetTextColor(WHITE);
 	skp->Rectangle(cp2_x, cp1_y, x + width, y + height);
-	skp->TextBox(cp2_x + 25, cp2_y + 10, x + width, cp1_y - 5, "ALT km", 6);
+	skp->TextBox(cp2_x + 15, y + 7, x + width, cp1_y, "ALT km", 6);
 	double altitude = (double)(attref->GetFlightStatus().altitude);
 	scale = 25;
 	int ralt = (int)(round(altitude / (double)scale) * (double)scale);
@@ -476,14 +499,71 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->TextBox(cp2_x + 35 + (offset / 2), mid_y - (th / 2), cp2_x + 35 + (offset / 2) + tw, mid_y + (th / 2), s.c_str(), s.length());
 
 	// Draw text
-	
+	int mid_width = cp2_x - cp1_x;
+	skp->SetPen(penGreen);
+	skp->Line(cp1_x + 5, cp1_y + 5 + th, cp2_x - 5, cp1_y + 5 + th);
+	skp->Line(cp1_x + (mid_width / 2), cp1_y + 5 + th, cp1_x + (mid_width / 2), y + height);
 	skp->SetTextColor(WHITE);
-	skp->TextBox(cp1_x, cp1_y, width / 2, 2 * cp1_y, frmStrings[frm], strlen(frmStrings[frm]));
+	skp->TextBox(cp1_x + 5, cp1_y + 5, cp1_x + (mid_width / 2), cp1_y + 5 + th, frmStrings[frm], strlen(frmStrings[frm]));
 	char buf[50];
 	if (attref->GetReferenceName(buf, 50)) {
-		skp->TextBox(width / 2, cp1_y, cp2_x, 2 * cp1_y, buf, strlen(buf));
+		skp->TextBox(cp1_x + (mid_width / 2) + 5, cp1_y + 5, cp2_x - 5, cp1_y + 5 + th, buf, strlen(buf));
 	}
+	// Row 1
+	int iy = cp1_y + 5 + th;
+	s = "ApA";
+	s.append(convertAltString(attref->GetFlightStatus().apoapsis));
+	skp->TextBox(cp1_x + 5, iy + 5, cp1_x + (mid_width / 2), iy + 5 + th, s.c_str(), s.length());
+	s = "PeA";
+	s.append(convertAltString(attref->GetFlightStatus().periapsis));
+	skp->TextBox(cp1_x + (mid_width / 2) + 5, iy + 5, cp2_x, iy + 5 + th, s.c_str(), s.length());
 
+	// Row 2
+	iy += (5 + th);
+	s = "ApT";
+	s.append(convertAltString(attref->GetFlightStatus().apoT));
+	skp->TextBox(cp1_x + 5, iy + 5, cp1_x + (mid_width / 2), iy + 5 + th, s.c_str(), s.length());
+	s = "PeT";
+	s.append(convertAltString(attref->GetFlightStatus().periT));
+	skp->TextBox(cp1_x + (mid_width / 2) + 5, iy + 5, cp2_x, iy + 5 + th, s.c_str(), s.length());
+
+	// Row 3
+	iy += (5 + th);
+	s = "Ecc ";
+	s.append(std::to_string(round(attref->GetFlightStatus().ecc * (double)10000) / (double)10000));
+	s = s.substr(0, 10);
+	skp->TextBox(cp1_x + 5, iy + 5, cp1_x + (mid_width / 2), iy + 5 + th, s.c_str(), s.length());
+	s = "Inc ";
+	double incl = attref->GetFlightStatus().inc*DEG;
+	double incl_scale = 10;
+	if (incl < 100) incl_scale = 100;
+	if (incl < 10) incl_scale = 1000;
+	s.append(std::to_string(round(incl * incl_scale) / incl_scale));
+	s = s.substr(0, 9);
+	s.append("°");
+	skp->TextBox(cp1_x + (mid_width / 2) + 5, iy + 5, cp2_x, iy + 5 + th, s.c_str(), s.length());
+}
+
+std::string AttitudeIndicatorMFD::convertAltString(double altitude) {
+	std::string s_suff = "";
+	if (abs(altitude) > 1000) {
+		s_suff = "k";
+		altitude /= 1000; // in k
+	}
+	if (abs(altitude) > 1000) {
+		s_suff = "M";
+		altitude /= 1000; // in M
+	}
+	double scale = 1;
+	if (abs(altitude) < 1000) scale = 10;
+	if (abs(altitude) < 100) scale = 100;
+	if (abs(altitude) < 10) scale = 1000;
+	std::string s;
+	if (altitude > 0) s = " ";
+	s.append(std::to_string(round(altitude * scale) / scale));
+	s = s.substr(0, 6);
+	s.append(s_suff);
+	return s;
 }
 
 // MFD message parser

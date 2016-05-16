@@ -36,6 +36,7 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	drawNormal = config.startNormal;
 	drawRadial = config.startRadial;
 	drawTurnVector = config.startTurnVector;
+	drawRateIndicator = config.startRateIndicator;
 
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
