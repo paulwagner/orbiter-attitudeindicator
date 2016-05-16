@@ -69,7 +69,6 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	frm = DEFAULT_FRAME;
 	speedMode = DEFAULT_SPEED;
 	CreateADI();
-	attref->SetMode(frm);
 }
 
 // Destructor
@@ -106,6 +105,15 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	}
+	UpdateFrm();
+}
+
+void AttitudeIndicatorMFD::UpdateFrm() {
+	attref->SetMode(frm);
+	if (frm <= 1) adi->SetMarkerMode(0); // Disable markers for ECL and EQU
+	if (frm == 2) adi->SetMarkerMode(1); // Fixed markers for OV/OM
+	if (frm == 3) adi->SetMarkerMode(2); // Surface relative markers for LH/LN
+	if (frm == 4) adi->SetMarkerMode(3); // Target relative markers for NAV
 }
 
 // Return button labels
@@ -175,7 +183,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		return true;
 	case OAPI_KEY_F:
 		frm = (frm + 1) % frmCount;
-		attref->SetMode(frm);
+		UpdateFrm();
 		return true;
 	case OAPI_KEY_S:
 		speedMode = (speedMode + 1) % speedCount;

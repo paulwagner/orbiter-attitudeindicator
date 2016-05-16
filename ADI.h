@@ -28,6 +28,7 @@ public:
 	void inline ToggleRadial(){ drawRadial = !drawRadial; }
 	void inline ToggleTurnVector(){ drawTurnVector = !drawTurnVector; }
 	void inline ToggleRateIndicators(){ drawRateIndicator = !drawRateIndicator; }
+	void inline SetMarkerMode(int newMarkerMode) { markerMode = newMarkerMode; }
 
 protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penIndicators;
@@ -38,6 +39,7 @@ protected:
 	void DrawTurnVector(oapi::Sketchpad* skp);
 	void DrawVectors(oapi::Sketchpad* skp);
 	void CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta);
+	void CalcOrientation(double azi, double inc, double& x, double& y, double &alpha, double &beta);
 	void DrawRateIndicators(oapi::Sketchpad* skp);
 
 private:
@@ -56,6 +58,8 @@ private:
 	bool drawRadial;
 	bool drawTurnVector;
 	bool drawRateIndicator;
+	// 0 - Disabled; 1 - Fixed; 2 - Surface relative; 3 - Target relative
+	int markerMode;
 
 	//some stuff for OpenGL
 	HDC hDC;

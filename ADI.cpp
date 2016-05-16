@@ -37,6 +37,7 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	drawRadial = config.startRadial;
 	drawTurnVector = config.startTurnVector;
 	drawRateIndicator = config.startRateIndicator;
+	markerMode = 0;
 
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
@@ -526,6 +527,52 @@ void ADI::CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double 
 	y = height - y; // invert y coords
 }
 
+void ADI::CalcOrientation(double azi, double inc, double& x, double& y, double &alpha, double &beta) {
+	GLdouble model[16];
+	GLdouble proj[16];
+	GLint view[4];
+	GLdouble z;
+	GLdouble fp[3];
+
+	glGetDoublev(GL_MODELVIEW_MATRIX, model);
+	glGetDoublev(GL_PROJECTION_MATRIX, proj);
+	glGetIntegerv(GL_VIEWPORT, view);
+
+	// View coordinates
+	GLdouble objx, objy, objz;
+	gluUnProject((GLdouble)width / 2, (GLdouble)height / 2, 0, model, proj, view, &objx, &objy, &objz);
+
+	double viewlen = length(_V(objx, objy, objz));
+	double cur_inc = acos(objy / viewlen); // Inclination
+	double cur_azi = atan2(objx, objz); // Azimuth
+	if (cur_azi < 0)
+		cur_azi += 360 * RAD; // Scale azimuth from 0 to 360 deg
+	alpha = abs(cur_azi - azi);
+	beta = abs(cur_inc - inc);
+	if (alpha > 180 * RAD)
+		alpha -= 360 * RAD;
+	if (beta > 180 * RAD)
+		beta -= 360 * RAD;
+
+	fp[0] = sin(inc) * sin(azi);
+	fp[1] = cos(inc);
+	fp[2] = sin(inc) * cos(azi);
+
+	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
+
+	CheckRange(x, (double)0, (double)width);
+	CheckRange(y, (double)0, (double)height);
+	y = height - y; // invert y coords
+}
+
+void drawIt(oapi::Sketchpad* skp, double alpha, double beta, int offset) {
+	std::string s = "a: ";
+	s.append(std::to_string(alpha));
+	s.append(", b: ");
+	s.append(std::to_string(beta));
+	skp->Text(5, offset, s.c_str(), s.length());
+}
+
 void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
@@ -536,10 +583,16 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	double alphaF = 1.2;
 	double betaF = 1.2;
 
+	if (markerMode == 0)
+		return;
+
 	// Prograde
 	if (drawPrograde) {
 		double d = sin(45 * RAD);
-		CalcVectors(fs.airspeed_vector, bank, x, y, alpha, beta);
+		if (markerMode == 1)
+			CalcOrientation(0, 90 * RAD, x, y, alpha, beta);
+		else
+			CalcVectors(fs.airspeed_vector, bank, x, y, alpha, beta);
 		ix = (int)x, iy = (int)y;
 		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 			skp->SetPen(penGrad);
@@ -553,7 +606,10 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 
 		// Retrograde
-		CalcVectors(-fs.airspeed_vector, bank, x, y, alpha, beta);
+		if (markerMode == 1)
+			CalcOrientation(180 * RAD, 90 * RAD, x, y, alpha, beta);
+		else
+			CalcVectors(-fs.airspeed_vector, bank, x, y, alpha, beta);
 		ix = (int)x, iy = (int)y;
 		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 			skp->SetPen(penGrad);
@@ -567,21 +623,27 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 	}
 
-	// Normal
-	if (drawNormal){
-		double dx = sin(60 * RAD);
-		double dy = sin(30 * RAD);
-		double nmlScale = 1.5;
+	VECTOR3 objv, shipv, objlv, shiplv, grav;
+	if (drawNormal || drawRadial) {
 		OBJHANDLE oh = v->GetGravityRef();
 		OBJHANDLE vh = v->GetHandle();
-		VECTOR3 objv, shipv, objlv, shiplv, grav;
 		v->GetGlobalPos(shipv);
 		oapiGetGlobalPos(oh, &objv);
 		oapiGlobalToLocal(vh, &shipv, &shiplv);
 		oapiGlobalToLocal(vh, &objv, &objlv);
 		grav = shiplv - objlv; // Gravity vector in vessel coordinates
+	}
+
+	// Normal
+	if (drawNormal){
+		double dx = sin(60 * RAD);
+		double dy = sin(30 * RAD);
+		double nmlScale = 1.5;
 		VECTOR3 nml = crossp(unit(fs.airspeed_vector), unit(grav));
-		CalcVectors(nml, bank, x, y, alpha, beta);
+		if (markerMode == 1)
+			CalcOrientation(270 * RAD, 90 * RAD, x, y, alpha, beta);
+		else
+			CalcVectors(nml, bank, x, y, alpha, beta);
 		ix = (int)x, iy = (int)y;
 		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 			skp->SetBrush(brushNormal);
@@ -593,7 +655,10 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 
 		// Anti-Normal
-		CalcVectors(-nml, bank, x, y, alpha, beta);
+		if (markerMode == 1)
+			CalcOrientation(90 * RAD, 90 * RAD, x, y, alpha, beta);
+		else
+			CalcVectors(-nml, bank, x, y, alpha, beta);
 		ix = (int)x, iy = (int)y;
 		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
 			skp->SetBrush(brushNormal);
@@ -604,6 +669,48 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Line(ix, iy + (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
 		}
 	}
+
+	// Radial
+	if (drawRadial) {
+		double sd = sin(45 * RAD);
+		double cd = cos(45 * RAD);
+		double radScale = 1.6;
+		if (markerMode == 1)
+			CalcOrientation(0, 0, x, y, alpha, beta);
+		else
+			CalcVectors(unit(grav), bank, x, y, alpha, beta);
+		ix = (int)x, iy = (int)y;
+		if (abs(beta) <= betaF) {
+			skp->SetPen(penRadial);
+			skp->SetBrush(brushRadial);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)(radScale * cw*cd), iy + (int)(radScale * ch*sd));
+			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)(radScale * cw*cd), iy - (int)(radScale * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)(radScale * cw*cd), iy + (int)(radScale * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)(radScale * cw*cd), iy - (int)(radScale * ch*sd));
+		}
+		// Anti-Radial
+		if (markerMode == 1)
+			CalcOrientation(0, 180 * RAD, x, y, alpha, beta);
+		else
+			CalcVectors(-unit(grav), bank, x, y, alpha, beta);
+		ix = (int)x, iy = (int)y;
+		if (abs(beta) <= betaF) {
+			skp->SetPen(penRadial);
+			skp->SetBrush(brushRadial);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)((2 - radScale) * cw*cd), iy + (int)((2 - radScale) * ch*sd));
+			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)((2 - radScale) * cw*cd), iy - (int)((2 - radScale) * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)((2 - radScale) * cw*cd), iy + (int)((2 - radScale) * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)((2 - radScale) * cw*cd), iy - (int)((2 - radScale) * ch*sd));
+		}
+
+	}
+
 }
 
 void ADI::DrawRateIndicators(oapi::Sketchpad* skp) {
