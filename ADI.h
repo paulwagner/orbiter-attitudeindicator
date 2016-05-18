@@ -28,11 +28,20 @@ public:
 	void inline ToggleRadial(){ drawRadial = !drawRadial; }
 	void inline ToggleTurnVector(){ drawTurnVector = !drawTurnVector; }
 	void inline ToggleRateIndicators(){ drawRateIndicator = !drawRateIndicator; }
-	void inline SetMarkerMode(int newMarkerMode) { markerMode = newMarkerMode; }
+	bool inline GetPrograde(){ return drawPrograde; }
+	bool inline GetNormal(){ return drawNormal; }
+	bool inline GetRadial(){ return drawRadial; }
+	bool inline GetTurnVector(){ return drawTurnVector; }
+	bool inline GetRateIndicators(){ return drawRateIndicator; }
+	void inline SetPrograde(bool prograde){ drawPrograde = prograde; }
+	void inline SetNormal(bool normal){ drawNormal = normal; }
+	void inline SetRadial(bool radial){ drawRadial = radial; }
+	void inline SetTurnVector(bool turnVector){ drawTurnVector = turnVector; }
+	void inline SetRateIndicators(bool rateIndicator){ drawRateIndicator = rateIndicator; }
 
 protected:
-	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penIndicators;
-	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial, *brushIndicators;
+	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penPerpendicular, *penTarget, *penIndicators;
+	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial, *brushPerpendicular, *brushTarget, *brushIndicators;
 
 	void DrawSurfaceText(oapi::Sketchpad* skp);
 	void DrawWing(oapi::Sketchpad* skp);
@@ -40,6 +49,8 @@ protected:
 	void DrawVectors(oapi::Sketchpad* skp);
 	void CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta);
 	void CalcOrientation(double azi, double inc, double& x, double& y, double &alpha, double &beta);
+	void CalcTarget(VECTOR3 vector, double& x, double& y, double &alpha, double &beta);
+	void ProjectVector(VECTOR3 vector, double& x, double& y, double &phi);
 	void DrawRateIndicators(oapi::Sketchpad* skp);
 
 private:
@@ -58,8 +69,6 @@ private:
 	bool drawRadial;
 	bool drawTurnVector;
 	bool drawRateIndicator;
-	// 0 - Disabled; 1 - Fixed; 2 - Surface relative; 3 - Target relative
-	int markerMode;
 
 	//some stuff for OpenGL
 	HDC hDC;

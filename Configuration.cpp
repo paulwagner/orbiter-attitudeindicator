@@ -5,6 +5,8 @@ Configuration::Configuration () {
 	config.progradeColor = PROGRADE;
 	config.normalColor = NORMAL;
 	config.radialColor = RADIAL;
+	config.perpendicularColor = PERPENDICULAR;
+	config.targetColor = TARGET;
 	config.wingColor = WING;
 	config.indicatorColor = INDICATOR;
 	config.turnVecColor = TURNVECTOR;
@@ -41,6 +43,14 @@ bool Configuration::loadConfig(const char* file) {
 	oapiReadItem_int(fh, S_RADIAL_G, g);
 	oapiReadItem_int(fh, S_RADIAL_B, b);
 	config.radialColor = RGB(r, g, b);
+	oapiReadItem_int(fh, S_PERPENDICULAR_R, r);
+	oapiReadItem_int(fh, S_PERPENDICULAR_G, g);
+	oapiReadItem_int(fh, S_PERPENDICULAR_B, b);
+	config.perpendicularColor = RGB(r, g, b);
+	oapiReadItem_int(fh, S_TARGET_R, r);
+	oapiReadItem_int(fh, S_TARGET_G, g);
+	oapiReadItem_int(fh, S_TARGET_B, b);
+	config.targetColor = RGB(r, g, b);
 	oapiReadItem_int(fh, S_WING_R, r);
 	oapiReadItem_int(fh, S_WING_G, g);
 	oapiReadItem_int(fh, S_WING_B, b);

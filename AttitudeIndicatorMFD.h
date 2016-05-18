@@ -48,7 +48,6 @@ private:
 	oapi::Brush *brushBlue, *brushGreen, *brushRed, *brushWhite, *brushBlack;
 
 	std::string convertAltString(double altitude);
-	void AttitudeIndicatorMFD::UpdateFrm();
 
 };
 

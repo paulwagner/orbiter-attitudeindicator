@@ -24,12 +24,16 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	penGrad = oapiCreatePen(1, 3, config.progradeColor);
 	penNormal = oapiCreatePen(1, 3, config.normalColor);
 	penRadial = oapiCreatePen(1, 3, config.radialColor);
+	penPerpendicular = oapiCreatePen(1, 3, config.perpendicularColor);
+	penTarget = oapiCreatePen(1, 3, config.targetColor);
 	penIndicators = oapiCreatePen(1, 2, config.indicatorColor);
 	brushWing = oapiCreateBrush(config.wingColor);
 	brushTurnVec = oapiCreateBrush(config.turnVecColor);
 	brushGrad = oapiCreateBrush(config.progradeColor);
 	brushNormal = oapiCreateBrush(config.normalColor);
 	brushRadial = oapiCreateBrush(config.radialColor);
+	brushPerpendicular = oapiCreateBrush(config.perpendicularColor);
+	brushTarget = oapiCreateBrush(config.targetColor);
 	brushIndicators = oapiCreateBrush(config.indicatorColor);
 
 	drawPrograde = config.startPrograde;
@@ -37,7 +41,6 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	drawRadial = config.startRadial;
 	drawTurnVector = config.startTurnVector;
 	drawRateIndicator = config.startRateIndicator;
-	markerMode = 0;
 
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
@@ -132,12 +135,16 @@ ADI::~ADI() {
 	delete penGrad;
 	delete penNormal;
 	delete penRadial;
+	delete penPerpendicular;
+	delete penTarget;
 	delete penIndicators;
 	delete brushWing;
 	delete brushTurnVec;
 	delete brushGrad;
 	delete brushNormal;
 	delete brushRadial;
+	delete brushPerpendicular;
+	delete brushTarget;
 	delete brushIndicators;
 	if (quad)
 		gluDeleteQuadric(quad);
@@ -494,7 +501,7 @@ void ADI::CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double 
 	VECTOR3 v1, v2;
 
 	v1 = v2 = vector; // Vector in vessel coordinates
-	v1.x = 0;
+	v1.x = 0; 
 	v2.y = 0;
 	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
 	alpha *= sgn(v2.x);
@@ -515,6 +522,39 @@ void ADI::CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double 
 
 	azi += cos(bank) * alpha - sin(bank) * beta;
 	inc += -cos(bank) * beta - sin(bank) * alpha;
+
+	fp[0] = sin(inc) * sin(azi);
+	fp[1] = cos(inc);
+	fp[2] = sin(inc) * cos(azi);
+
+	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
+
+	CheckRange(x, (double)0, (double)width);
+	CheckRange(y, (double)0, (double)height);
+	y = height - y; // invert y coords
+}
+
+void ADI::CalcTarget(VECTOR3 vector, double& x, double& y, double &alpha, double &beta) {
+	GLdouble model[16];
+	GLdouble proj[16];
+	GLint view[4];
+	GLdouble z;
+	GLdouble fp[3];
+	VECTOR3 v1, v2;
+
+	v1 = v2 = vector; // Vector in vessel coordinates
+	v1.x = 0;
+	v2.y = 0;
+	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle (azi)
+	alpha *= sgn(v2.x);
+	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle (inc)
+	beta *= sgn(v1.y);
+	double azi = alpha; // - (PI / 2);
+	double inc = beta + (180 * RAD);
+
+	glGetDoublev(GL_MODELVIEW_MATRIX, model);
+	glGetDoublev(GL_PROJECTION_MATRIX, proj);
+	glGetIntegerv(GL_VIEWPORT, view);
 
 	fp[0] = sin(inc) * sin(azi);
 	fp[1] = cos(inc);
@@ -565,36 +605,88 @@ void ADI::CalcOrientation(double azi, double inc, double& x, double& y, double &
 	y = height - y; // invert y coords
 }
 
-void drawIt(oapi::Sketchpad* skp, double alpha, double beta, int offset) {
-	std::string s = "a: ";
-	s.append(std::to_string(alpha));
-	s.append(", b: ");
-	s.append(std::to_string(beta));
+void drawIt(oapi::Sketchpad* skp, VECTOR3 v, int offset) {
+	std::string s = "(";
+	s.append(std::to_string(v.x));
+	s.append(",");
+	s.append(std::to_string(v.y));
+	s.append(",");
+	s.append(std::to_string(v.z));
+	s.append(")");
 	skp->Text(5, offset, s.c_str(), s.length());
+}
+
+void ADI::ProjectVector(VECTOR3 vector, double& x, double& y, double &phi) {
+	GLdouble model[16];
+	GLdouble proj[16];
+	GLint view[4];
+	GLdouble z;
+	GLdouble fp[3];
+	glGetDoublev(GL_MODELVIEW_MATRIX, model);
+	glGetDoublev(GL_PROJECTION_MATRIX, proj);
+	glGetIntegerv(GL_VIEWPORT, view);
+
+	// View coordinates
+	VECTOR3 cov;
+	normalise(vector);
+	gluUnProject((GLdouble)width / 2, (GLdouble)height / 2, 0, model, proj, view, &cov.x, &cov.y, &cov.z);
+	phi = acos(dotp(vector, cov) / length(cov))*DEG;
+	fp[0] = vector.x;
+	fp[1] = vector.y;
+	fp[2] = vector.z;
+
+	//(0,0,1) = N; (0,1,0) = H; (1,0,0) = E
+	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
+
+	CheckRange(x, (double)0, (double)width);
+	CheckRange(y, (double)0, (double)height);
+	y = height - y; // invert y coords
+}
+
+void DrawArc(oapi::Sketchpad* skp, double x, double y, double r, double s, double e) {
+	double xcoords[360];
+	double ycoords[360];
+
+	for (int i = 0; i<360; i++){
+		double degree = i*RAD;
+		xcoords[i] = x + (r*sin(degree));
+		ycoords[i] = y - (r*cos(degree));
+	}
+	for (int i = 1; i<360; i++) {
+		if (i >= s && i <= e) {
+			int px = (int)xcoords[i];
+			int py = (int)ycoords[i];
+			skp->Ellipse(px - 1, py - 1, px + 1, py + 1);
+		}
+	}
 }
 
 void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	double bank = fs.bank*RAD;
-	double alpha, beta;
+	VECTOR3 pgd, nml, rad, pep, tgt;
+	int frm = attref->GetMode();
+	double phi;
 	double x, y;
 	int ix, iy;
-	double alphaF = 1.2;
-	double betaF = 1.2;
+	double phiF = 70; // max marker view angle
 
-	if (markerMode == 0)
-		return;
+	// Calculate direction vectors
+	if (frm == 2)
+		attref->GetOrbitalSpeedDirection(pgd, nml, rad, pep); // Orbital relative vector in OV/OM
+	else if (frm == 3)
+		attref->GetAirspeedDirection(pgd, nml, rad, pep); // Surface relative vector in LH/LN
+	else if (frm == 4 && fs.target != 0)
+		attref->GetTargetDirections(tgt, pgd); // Target relative vector in NAV
+	else
+		return; // No markers in ECL and EQU
 
 	// Prograde
 	if (drawPrograde) {
 		double d = sin(45 * RAD);
-		if (markerMode == 1)
-			CalcOrientation(0, 90 * RAD, x, y, alpha, beta);
-		else
-			CalcVectors(fs.airspeed_vector, bank, x, y, alpha, beta);
+		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		if (abs(phi) <= phiF) {
 			skp->SetPen(penGrad);
 			skp->SetBrush(brushGrad);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
@@ -604,14 +696,10 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
 			skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
 		}
-
 		// Retrograde
-		if (markerMode == 1)
-			CalcOrientation(180 * RAD, 90 * RAD, x, y, alpha, beta);
-		else
-			CalcVectors(-fs.airspeed_vector, bank, x, y, alpha, beta);
+		ProjectVector(-pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		if (abs(phi) <= phiF) {
 			skp->SetPen(penGrad);
 			skp->SetBrush(NULL);
 			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
@@ -623,15 +711,37 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 	}
 
-	VECTOR3 objv, shipv, objlv, shiplv, grav;
-	if (drawNormal || drawRadial) {
-		OBJHANDLE oh = v->GetGravityRef();
-		OBJHANDLE vh = v->GetHandle();
-		v->GetGlobalPos(shipv);
-		oapiGetGlobalPos(oh, &objv);
-		oapiGlobalToLocal(vh, &shipv, &shiplv);
-		oapiGlobalToLocal(vh, &objv, &objlv);
-		grav = shiplv - objlv; // Gravity vector in vessel coordinates
+	// Target marker
+	if (frm == 4 && fs.target != 0){
+		int tx = (int)(cw / 2);
+		int ty = (int)(ch / 2);
+		double d = sin(45 * RAD);
+		ProjectVector(tgt, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			skp->SetPen(penTarget);
+			skp->SetBrush(brushTarget);
+			skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
+			skp->SetBrush(NULL);
+			DrawArc(skp, ix + tx, iy - ty, (int)(cw), 0, 90);
+			DrawArc(skp, ix + tx, iy + ty, (int)(cw), 90, 180);
+			DrawArc(skp, ix - tx, iy + ty, (int)(cw), 180, 270);
+			DrawArc(skp, ix - tx, iy - ty, (int)(cw), 270, 360);
+		}
+		// Anti-target
+		ProjectVector(-tgt, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			skp->SetPen(penTarget);
+			skp->SetBrush(brushTarget);
+			skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
+			skp->SetBrush(NULL);
+			skp->Line(ix, iy + (int)ch, ix, iy + 2 * (int)ch);
+			skp->Line(ix + (int)(cw*d), iy - (int)(ch*d), ix + 2 * (int)(cw*d), iy - 2 * (int)(ch*d));
+			skp->Line(ix - (int)(cw*d), iy - (int)(ch*d), ix - 2 * (int)(cw*d), iy - 2 * (int)(ch*d));
+		}
+
+		return; // No normal/radial markers in NAV mode
 	}
 
 	// Normal
@@ -639,13 +749,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		double dx = sin(60 * RAD);
 		double dy = sin(30 * RAD);
 		double nmlScale = 1.5;
-		VECTOR3 nml = crossp(unit(fs.airspeed_vector), unit(grav));
-		if (markerMode == 1)
-			CalcOrientation(270 * RAD, 90 * RAD, x, y, alpha, beta);
-		else
-			CalcVectors(nml, bank, x, y, alpha, beta);
+		ProjectVector(nml, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		if (abs(phi) <= phiF) {
 			skp->SetBrush(brushNormal);
 			skp->SetPen(penNormal);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
@@ -655,12 +761,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 
 		// Anti-Normal
-		if (markerMode == 1)
-			CalcOrientation(90 * RAD, 90 * RAD, x, y, alpha, beta);
-		else
-			CalcVectors(-nml, bank, x, y, alpha, beta);
+		ProjectVector(-nml, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		if (abs(alpha) <= alphaF && abs(beta) <= betaF) {
+		if (abs(phi) <= phiF) {
 			skp->SetBrush(brushNormal);
 			skp->SetPen(penNormal);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
@@ -675,12 +778,12 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double radScale = 1.6;
-		if (markerMode == 1)
-			CalcOrientation(0, 0, x, y, alpha, beta);
-		else
-			CalcVectors(unit(grav), bank, x, y, alpha, beta);
+		ProjectVector(rad, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		if (abs(beta) <= betaF) {
+		//std::string s = std::to_string(phi);
+		//skp->Text(5, 5, s.c_str(), s.length());
+		drawIt(skp, rad, 5);
+		if (abs(phi) <= phiF) {
 			skp->SetPen(penRadial);
 			skp->SetBrush(brushRadial);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
@@ -692,12 +795,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)(radScale * cw*cd), iy - (int)(radScale * ch*sd));
 		}
 		// Anti-Radial
-		if (markerMode == 1)
-			CalcOrientation(0, 180 * RAD, x, y, alpha, beta);
-		else
-			CalcVectors(-unit(grav), bank, x, y, alpha, beta);
+		ProjectVector(-rad, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		if (abs(beta) <= betaF) {
+		if (abs(phi) <= phiF) {
 			skp->SetPen(penRadial);
 			skp->SetBrush(brushRadial);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
@@ -727,6 +827,7 @@ void ADI::DrawRateIndicators(oapi::Sketchpad* skp) {
 	skp->Rectangle(width / 4, height - border - rwidth, width * 3 / 4, height - border);
 	skp->Line(width / 2, height - border, width / 2, height - border - rwidth);
 
+	// TODO use angular velocity instead of pitch/yaw/roll
 	skp->SetBrush(brushIndicators);
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
 	//double spitch = fs.pitchrate / 45;

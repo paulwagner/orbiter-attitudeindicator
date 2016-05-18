@@ -91,8 +91,16 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 }
 
 void AttitudeIndicatorMFD::CreateADI() {
-	if (adi)
+	bool saved = false, pgd = false, nrm = false, rad = false, turnv = false, ratei = false;
+	if (adi) {
+		saved = true;
+		pgd = adi->GetPrograde();
+		nrm = adi->GetNormal();
+		rad = adi->GetRadial();
+		turnv = adi->GetTurnVector();
+		ratei = adi->GetRateIndicators();
 		delete adi;
+	}
 	switch (mode) {
 	case 0:
 		adi = new ADI(1, 1, W - 2, H * 2 / 3, attref, 15, 15, config->getConfig());
@@ -105,15 +113,14 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, 15, 15, config->getConfig());
 		break;
 	}
-	UpdateFrm();
-}
-
-void AttitudeIndicatorMFD::UpdateFrm() {
+	if (saved) {
+		adi->SetPrograde(pgd);
+		adi->SetNormal(nrm);
+		adi->SetRadial(rad);
+		adi->SetTurnVector(turnv);
+		adi->SetRateIndicators(ratei);
+	}
 	attref->SetMode(frm);
-	if (frm <= 1) adi->SetMarkerMode(0); // Disable markers for ECL and EQU
-	if (frm == 2) adi->SetMarkerMode(1); // Fixed markers for OV/OM
-	if (frm == 3) adi->SetMarkerMode(2); // Surface relative markers for LH/LN
-	if (frm == 4) adi->SetMarkerMode(3); // Target relative markers for NAV
 }
 
 // Return button labels
@@ -183,7 +190,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		return true;
 	case OAPI_KEY_F:
 		frm = (frm + 1) % frmCount;
-		UpdateFrm();
+		attref->SetMode(frm);
 		return true;
 	case OAPI_KEY_S:
 		speedMode = (speedMode + 1) % speedCount;

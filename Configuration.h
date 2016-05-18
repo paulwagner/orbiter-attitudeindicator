@@ -11,6 +11,8 @@
 #define PROGRADE RGB(221,255,0)
 #define NORMAL RGB(235,11,255)
 #define RADIAL RGB(9,254,239)
+#define PERPENDICULAR RGB(0,34,255)
+#define TARGET RGB(235,11,255)
 #define WING WHITE
 #define INDICATOR WHITE
 #define TURNVECTOR WHITE
@@ -30,6 +32,12 @@
 #define S_RADIAL_R "radialR"
 #define S_RADIAL_G "radialG"
 #define S_RADIAL_B "radialB"
+#define S_PERPENDICULAR_R "perpendicularR"
+#define S_PERPENDICULAR_G "perpendicularG"
+#define S_PERPENDICULAR_B "perpendicularB"
+#define S_TARGET_R "targetR"
+#define S_TARGET_G "targetG"
+#define S_TARGET_B "targetB"
 #define S_WING_R "wingR"
 #define S_WING_G "wingG"
 #define S_WING_B "wingB"
@@ -50,6 +58,8 @@ typedef struct {
 	DWORD progradeColor;
 	DWORD normalColor;
 	DWORD radialColor;
+	DWORD perpendicularColor;
+	DWORD targetColor;
 	DWORD wingColor;
 	DWORD indicatorColor;
 	DWORD turnVecColor;
