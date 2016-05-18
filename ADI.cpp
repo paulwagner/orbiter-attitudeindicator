@@ -492,130 +492,6 @@ void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 	skp->Ellipse(width / 2 - offset, height / 2 - offset, width / 2 + offset, height / 2 + offset);
 }
 
-void ADI::CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta) {
-	GLdouble model[16];
-	GLdouble proj[16];
-	GLint view[4];
-	GLdouble z;
-	GLdouble fp[3];
-	VECTOR3 v1, v2;
-
-	v1 = v2 = vector; // Vector in vessel coordinates
-	v1.x = 0; 
-	v2.y = 0;
-	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle
-	alpha *= sgn(v2.x);
-	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle
-	beta *= sgn(v1.y);
-
-	glGetDoublev(GL_MODELVIEW_MATRIX, model);
-	glGetDoublev(GL_PROJECTION_MATRIX, proj);
-	glGetIntegerv(GL_VIEWPORT, view);
-
-	// View coordinates
-	GLdouble objx, objy, objz;
-	gluUnProject((GLdouble)width / 2, (GLdouble)height / 2, 0, model, proj, view, &objx, &objy, &objz);
-
-	double viewlen = length(_V(objx, objy, objz));
-	double inc = acos(objy / viewlen); // Inclination
-	double azi = atan2(objx, objz); // Azimuth
-
-	azi += cos(bank) * alpha - sin(bank) * beta;
-	inc += -cos(bank) * beta - sin(bank) * alpha;
-
-	fp[0] = sin(inc) * sin(azi);
-	fp[1] = cos(inc);
-	fp[2] = sin(inc) * cos(azi);
-
-	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
-
-	CheckRange(x, (double)0, (double)width);
-	CheckRange(y, (double)0, (double)height);
-	y = height - y; // invert y coords
-}
-
-void ADI::CalcTarget(VECTOR3 vector, double& x, double& y, double &alpha, double &beta) {
-	GLdouble model[16];
-	GLdouble proj[16];
-	GLint view[4];
-	GLdouble z;
-	GLdouble fp[3];
-	VECTOR3 v1, v2;
-
-	v1 = v2 = vector; // Vector in vessel coordinates
-	v1.x = 0;
-	v2.y = 0;
-	alpha = acos(dotp(unit(v2), _V(0, 0, 1))); // yaw angle (azi)
-	alpha *= sgn(v2.x);
-	beta = acos(dotp(unit(v1), _V(0, 0, 1))); // pitch angle (inc)
-	beta *= sgn(v1.y);
-	double azi = alpha; // - (PI / 2);
-	double inc = beta + (180 * RAD);
-
-	glGetDoublev(GL_MODELVIEW_MATRIX, model);
-	glGetDoublev(GL_PROJECTION_MATRIX, proj);
-	glGetIntegerv(GL_VIEWPORT, view);
-
-	fp[0] = sin(inc) * sin(azi);
-	fp[1] = cos(inc);
-	fp[2] = sin(inc) * cos(azi);
-
-	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
-
-	CheckRange(x, (double)0, (double)width);
-	CheckRange(y, (double)0, (double)height);
-	y = height - y; // invert y coords
-}
-
-void ADI::CalcOrientation(double azi, double inc, double& x, double& y, double &alpha, double &beta) {
-	GLdouble model[16];
-	GLdouble proj[16];
-	GLint view[4];
-	GLdouble z;
-	GLdouble fp[3];
-
-	glGetDoublev(GL_MODELVIEW_MATRIX, model);
-	glGetDoublev(GL_PROJECTION_MATRIX, proj);
-	glGetIntegerv(GL_VIEWPORT, view);
-
-	// View coordinates
-	GLdouble objx, objy, objz;
-	gluUnProject((GLdouble)width / 2, (GLdouble)height / 2, 0, model, proj, view, &objx, &objy, &objz);
-
-	double viewlen = length(_V(objx, objy, objz));
-	double cur_inc = acos(objy / viewlen); // Inclination
-	double cur_azi = atan2(objx, objz); // Azimuth
-	if (cur_azi < 0)
-		cur_azi += 360 * RAD; // Scale azimuth from 0 to 360 deg
-	alpha = abs(cur_azi - azi);
-	beta = abs(cur_inc - inc);
-	if (alpha > 180 * RAD)
-		alpha -= 360 * RAD;
-	if (beta > 180 * RAD)
-		beta -= 360 * RAD;
-
-	fp[0] = sin(inc) * sin(azi);
-	fp[1] = cos(inc);
-	fp[2] = sin(inc) * cos(azi);
-
-	gluProject(fp[0], fp[1], fp[2], model, proj, view, &x, &y, &z);
-
-	CheckRange(x, (double)0, (double)width);
-	CheckRange(y, (double)0, (double)height);
-	y = height - y; // invert y coords
-}
-
-void drawIt(oapi::Sketchpad* skp, VECTOR3 v, int offset) {
-	std::string s = "(";
-	s.append(std::to_string(v.x));
-	s.append(",");
-	s.append(std::to_string(v.y));
-	s.append(",");
-	s.append(std::to_string(v.z));
-	s.append(")");
-	skp->Text(5, offset, s.c_str(), s.length());
-}
-
 void ADI::ProjectVector(VECTOR3 vector, double& x, double& y, double &phi) {
 	GLdouble model[16];
 	GLdouble proj[16];
@@ -676,13 +552,13 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		attref->GetOrbitalSpeedDirection(pgd, nml, rad, pep); // Orbital relative vector in OV/OM
 	else if (frm == 3)
 		attref->GetAirspeedDirection(pgd, nml, rad, pep); // Surface relative vector in LH/LN
-	else if (frm == 4 && fs.target != 0)
+	else if (frm == 4 && fs.navTarget != 0)
 		attref->GetTargetDirections(tgt, pgd); // Target relative vector in NAV
 	else
 		return; // No markers in ECL and EQU
 
 	// Prograde
-	if (drawPrograde) {
+	if (drawPrograde && (frm != 4 || fs.navTarget != 0)) {
 		double d = sin(45 * RAD);
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
@@ -712,7 +588,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Target marker
-	if (frm == 4 && fs.target != 0){
+	if (frm == 4 && fs.navTarget != 0){
 		int tx = (int)(cw / 2);
 		int ty = (int)(ch / 2);
 		double d = sin(45 * RAD);
@@ -773,28 +649,61 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 	}
 
-	// Radial
+	// Perpendicular out
+	if (drawRadial) {
+		double sd = sin(45 * RAD);
+		double cd = cos(45 * RAD);
+		double pepScale = 1.6;
+		ProjectVector(pep, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			skp->SetPen(penPerpendicular);
+			skp->SetBrush(brushPerpendicular);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)(pepScale * cw*cd), iy + (int)(pepScale * ch*sd));
+			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)(pepScale * cw*cd), iy - (int)(pepScale * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)(pepScale * cw*cd), iy + (int)(pepScale * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)(pepScale * cw*cd), iy - (int)(pepScale * ch*sd));
+		}
+		// Perpendicular in
+		ProjectVector(-pep, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			skp->SetPen(penPerpendicular);
+			skp->SetBrush(brushPerpendicular);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)((2 - pepScale) * cw*cd), iy + (int)((2 - pepScale) * ch*sd));
+			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)((2 - pepScale) * cw*cd), iy - (int)((2 - pepScale) * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)((2 - pepScale) * cw*cd), iy + (int)((2 - pepScale) * ch*sd));
+			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)((2 - pepScale) * cw*cd), iy - (int)((2 - pepScale) * ch*sd));
+		}
+
+	}
+
+	// Radial out
 	if (drawRadial) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double radScale = 1.6;
 		ProjectVector(rad, x, y, phi);
 		ix = (int)x, iy = (int)y;
-		//std::string s = std::to_string(phi);
-		//skp->Text(5, 5, s.c_str(), s.length());
-		drawIt(skp, rad, 5);
 		if (abs(phi) <= phiF) {
 			skp->SetPen(penRadial);
 			skp->SetBrush(brushRadial);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
-			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
-			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)(radScale * cw*cd), iy + (int)(radScale * ch*sd));
-			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)(radScale * cw*cd), iy - (int)(radScale * ch*sd));
-			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)(radScale * cw*cd), iy + (int)(radScale * ch*sd));
-			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)(radScale * cw*cd), iy - (int)(radScale * ch*sd));
+			// TODO: Think of another marker symbol for radial
+			skp->Rectangle(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix, iy + (int)(ch), ix, iy + (int)(2 * ch));
+			skp->Line(ix, iy - (int)(ch), ix, iy - (int)(2 * ch));
+			skp->Line(ix + (int)(cw), iy, ix + (int)(2*ch), iy);
+			skp->Line(ix - (int)(cw), iy, ix - (int)(2 * ch), iy);
 		}
-		// Anti-Radial
+		// Radial in
 		ProjectVector(-rad, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		if (abs(phi) <= phiF) {
@@ -802,11 +711,11 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetBrush(brushRadial);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
-			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
-			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)((2 - radScale) * cw*cd), iy + (int)((2 - radScale) * ch*sd));
-			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)((2 - radScale) * cw*cd), iy - (int)((2 - radScale) * ch*sd));
-			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)((2 - radScale) * cw*cd), iy + (int)((2 - radScale) * ch*sd));
-			skp->Line(ix - (int)(cw*cd), iy - (int)(ch*sd), ix - (int)((2 - radScale) * cw*cd), iy - (int)((2 - radScale) * ch*sd));
+			skp->Rectangle(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Line(ix, iy + (int)(ch), ix, iy + (int)(ch / 2));
+			skp->Line(ix, iy - (int)(ch), ix, iy - (int)(ch / 2));
+			skp->Line(ix + (int)(cw), iy, ix + (int)(ch / 2), iy);
+			skp->Line(ix - (int)(cw), iy, ix - (int)(ch / 2), iy);
 		}
 
 	}

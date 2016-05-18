@@ -47,9 +47,6 @@ protected:
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);
 	void DrawVectors(oapi::Sketchpad* skp);
-	void CalcVectors(VECTOR3 vector, double bank, double& x, double& y, double &alpha, double &beta);
-	void CalcOrientation(double azi, double inc, double& x, double& y, double &alpha, double &beta);
-	void CalcTarget(VECTOR3 vector, double& x, double& y, double &alpha, double &beta);
 	void ProjectVector(VECTOR3 vector, double& x, double& y, double &phi);
 	void DrawRateIndicators(oapi::Sketchpad* skp);
 

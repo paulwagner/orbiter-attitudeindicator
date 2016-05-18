@@ -11,20 +11,13 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	VECTOR3 vec;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
-	v->GetShipAirspeedVector(fs.airspeed_vector);
 	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
-	//fs.hasTarget = false;
-	fs.target = 0;
-	NAVDATA ndata;
+	fs.navTarget = 0;
 	if (navhandle) {
+		NAVDATA ndata;
 		oapiGetNavData(navhandle, &ndata);
 		if (ndata.type == TRANSMITTER_IDS) {
-			fs.target = oapiGetVesselInterface(ndata.ids.hVessel);
-			VECTOR3 tmp1, tmp2;
-			fs.target->GetDockParams(ndata.ids.hDock, fs.target_dockpos, tmp1, tmp2);
-			//fs.target->GetShipAirspeedVector(fs.target_vector);
-			//vtgt->GetRelativeVel(v->GetHandle(), fs.target_vector_local);
-			//fs.hasTarget = true;
+			fs.navTarget = oapiGetVesselInterface(ndata.ids.hVessel);
 		}
 	}
 	OBJHANDLE body = v->GetApDist(fs.apoapsis);
@@ -56,9 +49,7 @@ bool AttitudeReferenceADI::GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &norm
 	v->GetRelativePos(v->GetGravityRef(), radial);
 	radial = tmul(m, unit(radial));
 	normal = crossp(unit(prograde), unit(radial));
-	perpendicular = crossp(unit(prograde), unit(normal));
-
-	// TODO: Calculate perpendicular
+	perpendicular = -crossp(unit(prograde), unit(normal));
 	return true;
 }
 
@@ -70,7 +61,6 @@ bool AttitudeReferenceADI::GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &
 	normal = _V(-1,0,0);
 	v->GetRelativePos(v->GetGravityRef(), radial);
 	radial = tmul(m, unit(radial));
-
 	return true;
 }
 
@@ -89,12 +79,10 @@ bool AttitudeReferenceADI::GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel)
 void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
 	double sint = sin(euler.y), cost = cos(euler.y);
 	double sinp = sin(euler.z), cosp = cos(euler.z);
-	if (GetProjMode() == 0) {
+	if (GetProjMode() == 0)
 		dir = _V(RAD*sinp*cost, RAD*sint, RAD*cosp*cost);
-	}
-	else {
+	else
 		dir = _V(-RAD*sint*cosp, RAD*sinp, RAD*cost*cosp);
-	}
 }
 
 bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {

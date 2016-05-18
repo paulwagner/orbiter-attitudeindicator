@@ -12,11 +12,6 @@ typedef struct {
 	double pitchrate;
 	double yawrate;
 	double rollrate;
-	VECTOR3 airspeed_vector;
-	//bool hasTarget;
-	//VECTOR3 target_vector;
-	VESSEL* target;
-	VECTOR3 target_dockpos;
 	double tas;
 	double os;
 	double apoapsis;
@@ -25,6 +20,7 @@ typedef struct {
 	double periT;
 	double ecc;
 	double inc;
+	VESSEL* navTarget;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {
@@ -34,11 +30,11 @@ public:
   bool GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel);
-  void CalculateDirection(VECTOR3 euler, VECTOR3 &dir);
   bool GetReferenceName(char *string, int n);
 
 private:
 	mutable FLIGHTSTATUS fs;
+	void CalculateDirection(VECTOR3 euler, VECTOR3 &dir);
 
 };
 
