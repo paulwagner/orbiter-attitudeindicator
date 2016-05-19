@@ -51,10 +51,11 @@ protected:
 	void DrawVectors(oapi::Sketchpad* skp);
 	void ProjectVector(VECTOR3 vector, double& x, double& y, double &phi);
 	void DrawRateIndicators(oapi::Sketchpad* skp);
+	void DrawDirectionArrow(oapi::Sketchpad* skp, oapi::IVECTOR2 v);
 
 private:
 	void CreateDisplayLists();
-	template<class T>void CheckRange(T &Var, const T &Min, const T &Max);
+	template<class T>T CheckRange(T &Var, const T &Min, const T &Max);
 	template <typename T> int sgn(T val);
 	void GetOpenGLRotMatrix(double* m);
 
@@ -62,6 +63,7 @@ private:
 	int width, height;
 	AttitudeReferenceADI* attref;
 	double cw, ch;
+	double diameter;
 
 	bool drawPrograde;
 	bool drawNormal;
