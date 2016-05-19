@@ -39,8 +39,8 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	drawPrograde = config.startPrograde;
 	drawNormal = config.startNormal;
 	drawRadial = config.startRadial;
-	drawTurnVector = config.startTurnVector;
-	drawRateIndicator = config.startRateIndicator;
+	drawPerpendicular = config.startPerpendicular;
+	turnVectorMode = config.startTurnVectorMode;
 
 	for (int i=0; i < 8; i++)
 		NSEW[i] = 0.0;
@@ -344,10 +344,10 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	DrawVectors(skp);
 	if (!useTexture)
 		DrawSurfaceText(skp);
-	if (drawTurnVector)
-		DrawTurnVector(skp);
-	if (drawRateIndicator)
+	if (turnVectorMode == 1)
 		DrawRateIndicators(skp);
+	if (turnVectorMode == 2)
+		DrawTurnVector(skp);
 	DrawWing(skp);
 }
 
@@ -650,7 +650,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Perpendicular out
-	if (drawRadial) {
+	if (drawPerpendicular) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double pepScale = 1.6;

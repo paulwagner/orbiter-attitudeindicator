@@ -15,6 +15,8 @@
 
 const float RADf = (float)RAD;
 
+#define TURNVECTORCOUNT 3
+
 class AttitudeReferenceADI;
 class Configuration;
 
@@ -26,18 +28,18 @@ public:
 	void inline TogglePrograde(){ drawPrograde = !drawPrograde; }
 	void inline ToggleNormal(){ drawNormal = !drawNormal; }
 	void inline ToggleRadial(){ drawRadial = !drawRadial; }
-	void inline ToggleTurnVector(){ drawTurnVector = !drawTurnVector; }
-	void inline ToggleRateIndicators(){ drawRateIndicator = !drawRateIndicator; }
+	void inline TogglePerpendicular(){ drawPerpendicular = !drawPerpendicular; }
+	void inline ToggleTurnVector(){ turnVectorMode++; turnVectorMode %= TURNVECTORCOUNT; }
 	bool inline GetPrograde(){ return drawPrograde; }
 	bool inline GetNormal(){ return drawNormal; }
 	bool inline GetRadial(){ return drawRadial; }
-	bool inline GetTurnVector(){ return drawTurnVector; }
-	bool inline GetRateIndicators(){ return drawRateIndicator; }
+	bool inline GetPerpendicular(){ return drawPerpendicular; }
+	int inline GetTurnVector(){ return turnVectorMode; }
 	void inline SetPrograde(bool prograde){ drawPrograde = prograde; }
 	void inline SetNormal(bool normal){ drawNormal = normal; }
 	void inline SetRadial(bool radial){ drawRadial = radial; }
-	void inline SetTurnVector(bool turnVector){ drawTurnVector = turnVector; }
-	void inline SetRateIndicators(bool rateIndicator){ drawRateIndicator = rateIndicator; }
+	void inline SetPerpendicular(bool perpendicular){ drawPerpendicular = perpendicular; }
+	void inline SetTurnVector(int newTurnVectorMode){ turnVectorMode = newTurnVectorMode; }
 
 protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penPerpendicular, *penTarget, *penIndicators;
@@ -64,10 +66,10 @@ private:
 	bool drawPrograde;
 	bool drawNormal;
 	bool drawRadial;
-	bool drawTurnVector;
-	bool drawRateIndicator;
+	bool drawPerpendicular;
+	// 0 - No turn vectors; 1 - PRIs; 2 - Turn vectors on ball
+	int turnVectorMode;
 
-	//some stuff for OpenGL
 	HDC hDC;
 	HGLRC hRC;
 	HBITMAP hBMP;

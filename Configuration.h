@@ -19,8 +19,8 @@
 #define STARTPROGRADE TRUE
 #define STARTNORMAL TRUE
 #define STARTRADIAL TRUE
-#define STARTTURNVEC FALSE
-#define STARTRATEINDICATOR FALSE
+#define STARTPERPENDICULAR TRUE
+#define STARTTURNVECMODE 0
 
 #define S_TEXTUREPATH "texture"
 #define S_PROGRADE_R "progradeR"
@@ -50,8 +50,8 @@
 #define S_PROGRADE_START "startPrograde"
 #define S_NORMAL_START "startNormal"
 #define S_RADIAL_START "startRadial"
-#define S_TURNVEC_START "startTurnVector"
-#define S_RATEIND_START "startRateIndicator"
+#define S_PERPENDICULAR_START "startPerpendicular"
+#define S_TURNVECMODE_START "startTurnVectorMode"
 
 typedef struct {
 	char *texturePath;
@@ -66,8 +66,8 @@ typedef struct {
 	bool startPrograde;
 	bool startNormal;
 	bool startRadial;
-	bool startTurnVector;
-	bool startRateIndicator;
+	bool startPerpendicular;
+	int startTurnVectorMode;
 } CONFIGURATION;
 
 class Configuration {

@@ -91,14 +91,14 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 }
 
 void AttitudeIndicatorMFD::CreateADI() {
-	bool saved = false, pgd = false, nrm = false, rad = false, turnv = false, ratei = false;
+	bool saved = false, pgd = false, nrm = false, rad = false, ratei = false;
+	int turnv = 0;
 	if (adi) {
 		saved = true;
 		pgd = adi->GetPrograde();
 		nrm = adi->GetNormal();
 		rad = adi->GetRadial();
 		turnv = adi->GetTurnVector();
-		ratei = adi->GetRateIndicators();
 		delete adi;
 	}
 	switch (mode) {
@@ -118,7 +118,6 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi->SetNormal(nrm);
 		adi->SetRadial(rad);
 		adi->SetTurnVector(turnv);
-		adi->SetRateIndicators(ratei);
 	}
 	attref->SetMode(frm);
 }
@@ -127,7 +126,7 @@ void AttitudeIndicatorMFD::CreateADI() {
 char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 {
 	// The labels for the buttons used by our MFD mode
-	static char *label[10] = {"MOD", "PGD", "NRM", "RAD", "PRI", "TRN", "Z+", "Z-", "FRM", "SPD"};
+	static char *label[10] = {"FRM", "MOD", "TRN", "SPD", "Z+", "Z-", "PGD", "NML", "PER", "RAD" };
 	return (bt < 10 ? label[bt] : 0);
 }
 
@@ -136,16 +135,16 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 {
 	// The menu descriptions for the buttons
 	static const MFDBUTTONMENU mnu[10] = {
+		{ "Change Frame", 0, 'F' },
 		{ "Change Mode", 0, 'M' },
+		{ "Toggle Turn Vector Indicator", 0, 'T' },
+		{ "Change Speed", 0, 'S' },
+		{ "Zoom in", 0, 'I' },
+		{ "Zoom out", 0, 'O' },
 		{ "Toggle Prograde/Retrograde", 0, 'P' },
 		{ "Toggle Normal/Antinormal", 0, 'N' },
-		{ "Toggle Radial/Antiradial", 0, 'R' },
-		{ "Toggle Pitch Rate Indicators", 0, 'D' },
-		{ "Toggle Turn Vector Indicator", 0, 'T' },
-		{ "Zoom in", 0, 'I' },
-		{"Zoom out", 0, 'O'},
-		{ "Change Frame", 0, 'F' },
-		{ "Change Speed", 0, 'S' }
+		{ "Toggle Perpendicular in/out", 0, 'D' },
+		{ "Toggle Radial in/out", 0, 'R' }
 	};
 	if (menu) *menu = mnu;
 	return 10; // return the number of buttons used
@@ -154,7 +153,7 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 {
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
-	static const DWORD btkey[10] = { OAPI_KEY_M, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_R, OAPI_KEY_D, OAPI_KEY_T, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_F, OAPI_KEY_S };
+	static const DWORD btkey[10] = { OAPI_KEY_F, OAPI_KEY_M, OAPI_KEY_T, OAPI_KEY_S, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_D, OAPI_KEY_R };
 	if (bt < 10) return ConsumeKeyBuffered(btkey[bt]);
 	else return false;
 }
@@ -176,17 +175,17 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		adi->ToggleRadial();
 		return true;
 	case OAPI_KEY_D:
-		adi->ToggleRateIndicators();
+		adi->TogglePerpendicular();
 		return true;
 	case OAPI_KEY_T:
 		adi->ToggleTurnVector();
 		return true;
 	case OAPI_KEY_I:
-		zoom += 0.5;
+		zoom += 0.1;
 		return true;
 	case OAPI_KEY_O:
-		if (zoom > 0.5)
-			zoom -= 0.5;
+		if (zoom > 0.2)
+			zoom -= 0.1;
 		return true;
 	case OAPI_KEY_F:
 		frm = (frm + 1) % frmCount;
