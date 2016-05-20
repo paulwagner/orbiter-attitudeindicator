@@ -2,13 +2,7 @@
 
 FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	const VESSEL *v = GetVessel();
-	//fs.altitude = v->GetAltitude();
 	// Body-independent parameters
-	//fs.pitch = v->GetPitch()*DEG;
-	//fs.bank = v->GetBank()*DEG;
-	//fs.yaw = v->GetYaw()*DEG;
-	//oapiGetHeading(v->GetHandle(), &fs.heading);
-	//fs.heading *= DEG;
 	VECTOR3 vec;
 	OBJHANDLE body;
 	ELEMENTS elem;
@@ -62,7 +56,8 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 
 	// TAS
 	double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
-	fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
+	//fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
+	fs.tas = v->GetAirspeed();
 
 	// IAS
 	fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));

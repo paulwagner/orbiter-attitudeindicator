@@ -8,7 +8,6 @@
 
 GLUquadric* quad;
 GLuint textureId;
-bool useTexture;
 
 ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config) {
 	this->x = x;
@@ -42,8 +41,6 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	drawPerpendicular = config.startPerpendicular;
 	turnVectorMode = config.startTurnVectorMode;
 
-	for (int i=0; i < 8; i++)
-		NSEW[i] = 0.0;
 	GLuint      PixelFormat;  
 	BITMAPINFOHEADER BIH;
 	int iSize=sizeof(BITMAPINFOHEADER);
@@ -91,25 +88,17 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	hRC=wglCreateContext(hDC);
 	ret=wglMakeCurrent(hDC,hRC);					//all standard OpenGL init so far
 
+	textureId = 0;
 	Image* texture = loadBMP(config.texturePath);
-	useTexture = (texture != NULL);
 	
 	glEnable(GL_DEPTH_TEST);
-	if (!useTexture) {
-		glEnable(GL_CULL_FACE);
-		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset (1.0, 2);
-	}
-
 	glViewport(0, 0, width, height);
-
 	//glClearColor(0.0f, 0.0f, 0.0f, 0.0f);           // Panel Background color
 
-	if (useTexture) {
+	if (texture) {
 		glEnable(GL_NORMALIZE);
 		glEnable(GL_COLOR_MATERIAL);
 		quad = gluNewQuadric();
-
 		glGenTextures(1, &textureId); //Make room for our texture
 		glBindTexture(GL_TEXTURE_2D, textureId); //Tell OpenGL which texture to edit
 		//Map the image to the texture
@@ -123,10 +112,6 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 			texture->pixels);               //The actual pixel data
 		delete texture;
 	}
-	else {
-		CreateDisplayLists();
-	}
-
 }
 
 ADI::~ADI() {
@@ -156,135 +141,11 @@ ADI::~ADI() {
 	DeleteDC(hDC);
 }
 
-void ADI::CreateDisplayLists() {
-	displayLists[0] = glGenLists(NUM_DLS);
-
-	for (int i = 1; i < NUM_DLS; i++)
-		displayLists[i] = displayLists[0] + i;
-
-	float x, y, z, scale;
-	int elev, azi, elev2;
-
-	glNewList (displayLists[DL_HEMISPHERE], GL_COMPILE);
-		glBegin (GL_TRIANGLE_FAN);
-			glVertex3f (0.0f, 1.0f, 0.0f); // top vertex
-			elev = 80;
-			y = sin (elev*RADf);
-			for (azi = 360; azi >= 0; azi -= 10) { // run in a circle at +80 degrees
-				x = cos (elev*RADf) * cos (azi*RADf);
-				z = cos (elev*RADf) * sin (azi*RADf);
-				glVertex3f (x, y, z);
-			}
-		glEnd();
-
-		for (elev = 70; elev >= 0; elev -= 10) {
-			elev2 = elev + 10;
-			azi = 0;
-			glBegin (GL_QUAD_STRIP);
-
-				y = sin (elev*RADf);
-				x = cos (elev*RADf) * cos (azi*RADf);
-				z = cos (elev*RADf) * sin (azi*RADf);
-				glVertex3f (x, y, z);
-
-				y = sin (elev2*RADf);
-				x = cos (elev2*RADf) * cos (azi*RADf);
-				z = cos (elev2*RADf) * sin (azi*RADf);
-				glVertex3f (x, y, z);
-
-				for (azi = 10; azi <= 360; azi += 10) {
-					y = sin (elev*RADf);
-					x = cos (elev*RADf) * cos (azi*RADf);
-					z = cos (elev*RADf) * sin (azi*RADf);
-					glVertex3f (x, y, z);
-
-					y = sin (elev2*RADf);
-					x = cos (elev2*RADf) * cos (azi*RADf);
-					z = cos (elev2*RADf) * sin (azi*RADf);
-					glVertex3f (x, y, z);
-				}
-			glEnd ();
-		}
-	glEndList();
-
-	glNewList (displayLists[DL_CIRCLE_XZ], GL_COMPILE);
-		glBegin (GL_LINE_LOOP);
-			for (azi = 0; azi < 360; azi += 10) {
-				x = sin (azi*RADf);
-				z = cos (azi*RADf);
-				glVertex3f (x, 0.0f, z);
-			}
-		glEnd();
-	glEndList();
-
-	glNewList (displayLists[DL_CIRCLE_XY], GL_COMPILE);
-		glBegin (GL_LINE_LOOP);
-			for (azi = 0; azi < 360; azi += 10) {
-				x = cos (azi*RADf);
-				y = sin (azi*RADf);
-				glVertex3f (x, y, 0.0f);
-			}
-		glEnd();
-	glEndList();
-
-	glNewList (displayLists[DL_LATITUDE_MAJOR], GL_COMPILE);
-		for (int elev = 30; elev < 90; elev += 30) {
-			glPushMatrix();
-				glTranslatef(0.0f, sin (elev*RADf), 0.0f);
-				scale = cos (elev*RADf);
-				glScalef (scale, scale, scale);
-				glCallList(displayLists[DL_CIRCLE_XZ]);
-			glPopMatrix();
-		}
-	glEndList();
-
-	glNewList (displayLists[DL_LATITUDE_MINOR], GL_COMPILE);
-		for (int elev = 10; elev < 90; elev += 10) {
-			if (elev%30 != 0) {
-				glPushMatrix();
-					glTranslatef(0.0f, sin (elev*RADf), 0.0f);
-					scale = cos (elev*RADf);
-					glScalef (scale, scale, scale);
-					glCallList(displayLists[DL_CIRCLE_XZ]);
-				glPopMatrix();
-			}
-		}
-	glEndList();
-
-	glNewList (displayLists[DL_LONGITUDE], GL_COMPILE);
-		for (int azi = 0; azi < 360; azi += 30) {
-			glPushMatrix();
-				glRotatef ((float)azi, 0.0f, 1.0f, 0.0f);
-				glCallList(displayLists[DL_CIRCLE_XY]);
-			glPopMatrix();
-		}
-	glEndList();
-
-	glNewList (displayLists[DL_BALL], GL_COMPILE);
-		glPushMatrix();
-			glColor3f (0.0f, 0.63f, 0.65f);				// sky background colour
-			glCallList (displayLists[DL_HEMISPHERE]);	//render
-
-			glColor3f (0.6f, 0.6f, 0.97f);				// TODO: sky line colour
-			glCallList (displayLists[DL_LATITUDE_MAJOR]);
-
-			glColor3f (0.0f, 0.97f, 0.03f); // horizon line colour
-			glCallList (displayLists[DL_CIRCLE_XZ]); //render
-
-			glColor3f (0.5f, 0.5f, 0.5f); // TODO: longitude colour
-			glCallList (displayLists[DL_LONGITUDE]);
-
-			glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
-			glColor3f (0.38f, 0.25f, 0.15f); // earth background colour
-			glCallList (displayLists[DL_HEMISPHERE]);	//render
-
-			glColor3f (1.0f, 0.5f, 0.28f);
-			glCallList (displayLists[DL_LATITUDE_MAJOR]);
-		glPopMatrix();
-	glEndList();
-}
-
 void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
+	if (textureId == 0){
+		skp->Text(5, height / 2, "Texture not found!", 18);
+		return;
+	}
 	HDC	hDC = skp->GetDC();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);             // Clear The Screen And The Depth Buffer        
@@ -308,43 +169,23 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	GetOpenGLRotMatrix(m);
 	glMultMatrixd(m);
 
-	if (useTexture) {
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, textureId);
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, textureId);
 
-		glPushMatrix();
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glRotatef(-90, 1.0f, 0.0f, 0.0f); // Get texture to right position
-		gluQuadricTexture(quad, 1);
-		gluQuadricOrientation(quad, GLU_OUTSIDE);
-		gluSphere(quad, 1, 40, 40);
-		glPopMatrix();
-	} else {
-		glCallList(displayLists[DL_BALL]);
-
-		glEnable(GL_LINE_STIPPLE);
-		glLineStipple(5, 0x5555);
-
-		glColor3f(0.6f, 0.6f, 0.97f);				// TODO: sky line colour
-		glCallList(displayLists[DL_LATITUDE_MINOR]);
-
-		glPushMatrix();
-		glColor3f(1.0f, 0.5f, 0.28f);
-		glScalef(-1.0f, -1.0f, -1.0f);
-		glCallList(displayLists[DL_LATITUDE_MINOR]);
-		glPopMatrix();
-
-		glDisable(GL_LINE_STIPPLE);
-	}
+	glPushMatrix();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glRotatef(-90, 1.0f, 0.0f, 0.0f); // Get texture to right position
+	gluQuadricTexture(quad, 1);
+	gluQuadricOrientation(quad, GLU_OUTSIDE);
+	gluSphere(quad, 1, 40, 40);
+	glPopMatrix();
 
 	glFlush();
 	glFinish();
 	BitBlt (hDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
 
 	DrawVectors(skp);
-	if (!useTexture)
-		DrawSurfaceText(skp);
 	if (turnVectorMode == 1)
 		DrawRateIndicators(skp);
 	if (turnVectorMode == 2)
@@ -409,57 +250,6 @@ void ADI::GetOpenGLRotMatrix(double* m) {
 	m[15] = 1;
 }
 
-void ADI::DrawSurfaceText(oapi::Sketchpad* skp) {
-	GLdouble model[16];
-	GLdouble proj[16];
-	GLint view[4];
-	GLdouble z;
-
-	glGetDoublev(GL_MODELVIEW_MATRIX, model);
-	glGetDoublev(GL_PROJECTION_MATRIX, proj);
-	glGetIntegerv(GL_VIEWPORT, view);
-	gluProject(0.0, 0.0, 1.0, model, proj, view, NSEW + 0, NSEW + 1, &z);
-	gluProject(0.0, 0.0, -1.0, model, proj, view, NSEW + 2, NSEW + 3, &z);
-	gluProject(1.0, 0.0, 0.0, model, proj, view, NSEW + 4, NSEW + 5, &z);
-	gluProject(-1.0, 0.0, 0.0, model, proj, view, NSEW + 6, NSEW + 7, &z);
-
-
-	for (int i = 0; i < 8; i += 2)
-		CheckRange(NSEW[i], (double)0, (double)width);
-	for (int i = 1; i < 8; i += 2) {
-		CheckRange(NSEW[i], (double)0, (double)height);
-		NSEW[i] = height - NSEW[i]; // invert y coords
-	}
-
-	skp->SetTextColor(WHITE);
-
-	double cw, ch;
-	cw = ch = 0;
-	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	/*
-	if (fs.heading > 267 || fs.heading < 93 || abs(fs.pitch) > 80) {
-		skp->Text((int)(x + NSEW[0] - cw / 2),
-			(int)(y + NSEW[1] - ch / 2), "N", 1);
-	}
-
-	if (fs.heading > 87 && fs.heading < 273 || abs(fs.pitch) > 80) {
-		skp->Text((int)(x + NSEW[2] - cw / 2),
-			(int)(y + NSEW[3] - ch / 2), "S", 1);
-	}
-
-	if (fs.heading > 357 || fs.heading < 183 || abs(fs.pitch) > 80) {
-		skp->Text((int)(x + NSEW[4] - cw / 2),
-			(int)(y + NSEW[5] - ch / 2), "E", 1);
-	}
-
-	if (fs.heading > 177 || fs.heading < 3 || abs(fs.pitch) > 80) {
-		skp->Text((int)(x + NSEW[6] - cw / 2),
-			(int)(y + NSEW[7] - ch / 2), "W", 1);
-	}
-	*/
-}
-
-
 void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->SetPen(penWing);
 	skp->SetBrush(brushWing);
@@ -469,22 +259,16 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 2);
 	skp->LineTo(width / 2 + (int)(cw * 4), height / 2);
 	skp->Rectangle(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
-	//skp->Ellipse(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
-	//skp->MoveTo(width / 2 - 40, height / 2);
-	//skp->LineTo(width / 2 - 15, height / 2);
-	//skp->LineTo(width / 2, height / 2 + 10);
-	//skp->LineTo(width / 2 + 15, height / 2);
-	//skp->LineTo(width / 2 + 40, height / 2);
 }
 
 void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	double yawProj = (1 + fs.yawrate*RADf) * ((double)width / 2);
-	double pitchProj = (1 + fs.pitchrate*RADf) * ((double)height / 2);
+	double yawProj = (1 + fs.yawrate*RAD) * ((double)width / 2);
+	double pitchProj = (1 + fs.pitchrate*RAD) * ((double)height / 2);
 	CheckRange(yawProj, (double)0, (double)width);
 	CheckRange(pitchProj, (double)0, (double)height);
 	pitchProj = height - pitchProj; // invert y coords
-	double roll = abs(fs.rollrate*RADf); // Between 0 and 1
+	double roll = abs(fs.rollrate*RAD); // Between 0 and 1
 
 	// Draw vector
 	skp->SetPen(penTurnVec);
@@ -794,28 +578,17 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 void ADI::DrawRateIndicators(oapi::Sketchpad* skp) {
 	skp->SetPen(penIndicators);
 	skp->SetBrush(NULL);
-	int border = 10;
-	int rwidth = 25;
-	//skp->Rectangle(border, height / 4, border + rwidth, height * 3 / 4);
-	//skp->Line(border, height / 2, border + rwidth, height / 2);
+	int border = (int)(ch*2/3);
+	int rwidth = (int)(ch*1.5);
 	skp->Rectangle(width - border - rwidth, height / 4, width - border, height * 3 / 4);
-	skp->Line(width - border - rwidth, height / 2, width - border, height / 2);
+	skp->Line(width - border - rwidth - 1, height / 2, width - border - 1, height / 2);
 	skp->Rectangle(width / 4, border, width * 3 / 4, border + rwidth);
-	skp->Line(width / 2, border, width / 2, border + rwidth);
+	skp->Line(width / 2, border - 1, width / 2, border + rwidth - 1);
 	skp->Rectangle(width / 4, height - border - rwidth, width * 3 / 4, height - border);
-	skp->Line(width / 2, height - border, width / 2, height - border - rwidth);
+	skp->Line(width / 2, height - border - 1, width / 2, height - border - rwidth - 1);
 
-	// TODO use angular velocity instead of pitch/yaw/roll
 	skp->SetBrush(brushIndicators);
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	//double spitch = fs.pitchrate / 45;
-	//CheckRange(spitch, -1.0, 1.0);
-	//int pitchrect = (int)(spitch * (double)height / 4);
-	//skp->Rectangle(border, height / 2, border + rwidth, (height / 2) + pitchrect);
-	//double syaw = fs.yawrate / 45;
-	//CheckRange(syaw, -1.0, 1.0);
-	//int yawrect = (int)(syaw * (double)height / 4);
-	//skp->Rectangle(width - border - rwidth, height / 2, width - border, (height / 2) + yawrect);
 	double spitch = fs.pitchrate / 45;
 	CheckRange(spitch, -1.0, 1.0);
 	int pitchrect = (int)(spitch * (double)height / 4);

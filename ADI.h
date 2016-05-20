@@ -4,17 +4,6 @@
 #include "orbitersdk.h"
 #include "Configuration.h"
 
-#define DL_HEMISPHERE		0
-#define DL_CIRCLE_XZ		1
-#define DL_CIRCLE_XY		2
-#define DL_LATITUDE_MAJOR	3
-#define DL_LATITUDE_MINOR	4
-#define DL_LONGITUDE		5
-#define DL_BALL				6
-#define NUM_DLS				7
-
-const float RADf = (float)RAD;
-
 #define TURNVECTORCOUNT 3
 
 class AttitudeReferenceADI;
@@ -45,7 +34,6 @@ protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penPerpendicular, *penTarget, *penIndicators;
 	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial, *brushPerpendicular, *brushTarget, *brushIndicators;
 
-	void DrawSurfaceText(oapi::Sketchpad* skp);
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);
 	void DrawVectors(oapi::Sketchpad* skp);
@@ -54,7 +42,6 @@ protected:
 	void DrawDirectionArrow(oapi::Sketchpad* skp, oapi::IVECTOR2 v);
 
 private:
-	void CreateDisplayLists();
 	template<class T>T CheckRange(T &Var, const T &Min, const T &Max);
 	template <typename T> int sgn(T val);
 	void GetOpenGLRotMatrix(double* m);
@@ -76,10 +63,6 @@ private:
 	HGLRC hRC;
 	HBITMAP hBMP;
 	HBITMAP hBMP_old;
-	int displayLists[NUM_DLS];
-
-	double NSEW[8];
-
 };
 
 #endif

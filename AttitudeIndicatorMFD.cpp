@@ -223,25 +223,8 @@ void AttitudeIndicatorMFD::PostStep(double simt, double simdt, double mjd) {
 }
 
 // Repaint the MFD
-bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp)
-{
+bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 	Title (skp, "Attitude Indicator");
-	// Draws the MFD title
-
-	/*
-	skp->SetFont (font);
-	skp->SetTextAlign (oapi::Sketchpad::CENTER, oapi::Sketchpad::BASELINE);
-	skp->SetTextColor (0x00FFFF);
-	skp->Text (W/2, H/2,"Display area", 12);
-	skp->Rectangle (W/4, H/4, (3*W)/4, (3*H)/4);
-
-	VECTOR3 arot;
-	VESSEL *v = oapiGetFocusInterface();
-	v->GetGlobalOrientation(arot);
-	*/
-
-	// Add MFD display routines here.
-	// Use the device context (hDC) for Windows GDI paint functions.
 
 	if (g_AttitudeIndicatorMFD.CurrentMFD != NULL) {
 		g_AttitudeIndicatorMFD.CurrentMFD->PostStep(oapiGetSimTime(), oapiGetSimStep(), oapiGetSimMJD());
@@ -282,8 +265,6 @@ inline int GetScale(int c) {
 }
 
 void WriteText(oapi::Sketchpad *skp, int x1, int y1, int kw, std::string k, std::string v) {
-	//skp->TextBox(x1, y1, x1 + kw, y2, k.c_str(), k.length());
-	//skp->TextBox(x1 + kw, y1, x2, y2, v.c_str(), v.length());
 	skp->Text(x1, y1, k.c_str(), k.length());
 	skp->Text(x1 + kw, y1, v.c_str(), v.length());
 }
