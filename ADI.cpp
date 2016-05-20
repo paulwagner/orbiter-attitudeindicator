@@ -436,6 +436,7 @@ void ADI::DrawSurfaceText(oapi::Sketchpad* skp) {
 	double cw, ch;
 	cw = ch = 0;
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
+	/*
 	if (fs.heading > 267 || fs.heading < 93 || abs(fs.pitch) > 80) {
 		skp->Text((int)(x + NSEW[0] - cw / 2),
 			(int)(y + NSEW[1] - ch / 2), "N", 1);
@@ -455,6 +456,7 @@ void ADI::DrawSurfaceText(oapi::Sketchpad* skp) {
 		skp->Text((int)(x + NSEW[6] - cw / 2),
 			(int)(y + NSEW[7] - ch / 2), "W", 1);
 	}
+	*/
 }
 
 
@@ -521,8 +523,8 @@ void ADI::ProjectVector(VECTOR3 vector, double& x, double& y, double &phi) {
 }
 
 void ADI::DrawDirectionArrow(oapi::Sketchpad* skp, oapi::IVECTOR2 v) {
-	int s1 = 10; // Radial size of arrow
-	double s2 = 4 * RAD; // Radial width of arrow
+	int s1 = (int)(cw * 2 / 3); // Radial size of arrow
+	double s2 = (cw/3) * RAD; // Radial width of arrow
 	v.x -= (int)(width / 2);
 	v.y -= (int)(height / 2);
 	// To polar coordinates

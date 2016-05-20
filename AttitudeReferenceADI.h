@@ -4,16 +4,18 @@
 #include "attref.h"
 
 typedef struct {
-	double pitch;
-	double bank;
-	double yaw;
-	double heading;
+	//double pitch;
+	//double bank;
+	//double yaw;
+	//double heading;
 	double altitude;
 	double pitchrate;
 	double yawrate;
 	double rollrate;
 	double tas;
 	double os;
+	double ias;
+	double gs;
 	double apoapsis;
 	double periapsis;
 	double apoT;

@@ -1,21 +1,23 @@
 #include "AttitudeReferenceADI.h"
 
 FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
+	const VESSEL *v = GetVessel();
+	//fs.altitude = v->GetAltitude();
+	// Body-independent parameters
+	//fs.pitch = v->GetPitch()*DEG;
+	//fs.bank = v->GetBank()*DEG;
+	//fs.yaw = v->GetYaw()*DEG;
+	//oapiGetHeading(v->GetHandle(), &fs.heading);
+	//fs.heading *= DEG;
+	VECTOR3 vec;
+	OBJHANDLE body;
 	ELEMENTS elem;
 	ORBITPARAM orbitparam;
 	int frm = FRAME_EQU;
 	if (GetMode() == 0) frm = FRAME_ECL;
-	OBJHANDLE body;
-	const VESSEL *v = GetVessel();
-	fs.altitude = v->GetAltitude();
-	fs.pitch = v->GetPitch()*DEG;
-	fs.bank = v->GetBank()*DEG;
-	fs.yaw = v->GetYaw()*DEG;
-	oapiGetHeading(v->GetHandle(), &fs.heading);
-	fs.heading *= DEG;
-	VECTOR3 vec;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
+	// Target-relative Parameters
 	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
 	fs.navTarget = 0;
 	if (navhandle) {
@@ -34,22 +36,60 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 			fs.navTargetInc = elem.i;
 		}
 	}
-	body = v->GetApDist(fs.apoapsis);
-	v->GetPeDist(fs.periapsis);
+	// Surface-relative parameters
+	body = v->GetEquPos(fs.lon, fs.lat, fs.r);
+	VECTOR3 plnt = _V(-sin(fs.lon), 0, cos(fs.lon));
+	plnt *= (2 * PI * fs.r * cos(fs.lat) / oapiGetPlanetPeriod(body));
+	MATRIX3 m;
+	oapiGetRotationMatrix(body, &m);
+	VECTOR3 plnt_v = mul(m, plnt);
+	v->GetRelativeVel(body, vec);
+	fs.gs = dist(plnt_v,  vec);
+
+	double mach = v->GetMachNumber();
+	const ATMCONST *ac = oapiGetPlanetAtmConstants(body);
+	ATMPARAM ap;
+	oapiGetAtm(v->GetHandle(), &ap);
+	double gamma = ac->gamma; // Ratio of specific heats
+	double p1 = v->GetAtmPressure(); // Freestream pressure
+	double ps = ac->p0; // Standard sea level pressure
+	double ds = ac->rho0;
+	double as = sqrt(gamma * ps / ac->rho0); // Sea level speed of sound
+
+	double gamma_1 = gamma - 1;
+	double gamma_r = gamma_1 / gamma;
+	double k = 2. / gamma_1;
+
+	// TAS
+	double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
+	fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
+
+	// IAS
+	fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));
+	//fs.ias = fs.tas / (ds / v->GetAtmDensity());
+	//fs.ias = fs.tas / (59.05 * (1 + 0.00002*3.28084*v->GetAltitude()));
+
+	// Body-relative parameters
+	body = GetVessel()->GetGravityRef();
+	if (GetMode() == 3)
+		body = GetVessel()->GetSurfaceRef();
 	double body_rad = oapiGetSize(body);
+	v->GetElements(body, elem, &orbitparam, 0, frm);
+	fs.apoapsis = orbitparam.ApD;
+	fs.periapsis = orbitparam.PeD;
 	fs.apoapsis -= body_rad;
 	fs.periapsis -= body_rad;
-	v->GetElements(body, elem, &orbitparam, 0, frm);
-	double m = oapiGetMass(body);
-	fs.os = sqrt(GGRAV * m * (2 / body_rad - 1 / elem.a));
-	fs.tas = v->GetAirspeed();
 	fs.apoT = orbitparam.ApT;
 	fs.periT = orbitparam.PeT;
 	fs.t = orbitparam.T;
 	fs.lan = elem.theta;
 	fs.ecc = elem.e;
 	fs.inc = elem.i;
-	v->GetEquPos(fs.lon, fs.lat, fs.r);
+	v->GetRelativeVel(body, vec);
+	fs.os = length(vec);
+	v->GetRelativePos(body, vec);
+	fs.altitude = length(vec) - body_rad;
+
 	return fs;
 }
 

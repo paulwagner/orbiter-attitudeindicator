@@ -13,13 +13,13 @@ class Configuration;
 
 // 0=ecliptic, 1=equator, 2=orbit, 3=local horizon, 4+ = NAV receiver
 const int frmCount = 5;
-const char* frmStrings[5] = { "ECL", "EQU", "OV/OM", "LH/LN", "NAV" };
+const std::string frmStrings[5] = { "ECL", "EQU", "OV/OM", "LH/LN", "NAV" };
 
 // 0=normal, 2=big
 const int modeCount = 2;
 
-// 0=TAS, 1=OS
-const int speedCount = 2;
+// 0=GS, 1=OS, 2=TAS, 3=IAS
+const int speedCount = 4;
 
 class AttitudeIndicatorMFD: public MFD2 {
 public:
