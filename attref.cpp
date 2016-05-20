@@ -220,18 +220,6 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 					VECTOR3 dir, sdir;
 					if (tgtmode == 2) {
 						oapiGetNavPos (hNav, &dir);
-						// Correct IDS position
-						/*
-						NAVDATA ndata;
-						oapiGetNavData(hNav, &ndata);
-						if (ndata.type == TRANSMITTER_IDS) {
-							VESSEL* vtgt = oapiGetVesselInterface(ndata.ids.hVessel);
-							VECTOR3 dockposLoc, dockposGlob, tmp1, tmp2;
-							vtgt->GetDockParams(ndata.ids.hDock, dockposLoc, tmp1, tmp2);
-							vtgt->GlobalRot(dockposLoc, dockposGlob);
-							dir += dockposGlob;
-						}
-						*/
 						v->GetGlobalPos (sdir);
 						dir = tmul (GetFrameRotMatrix(), unit (dir-sdir));
 					} else {

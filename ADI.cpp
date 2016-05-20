@@ -1,13 +1,8 @@
 #include "ADI.h"
 #include "AttitudeReferenceADI.h"
-#include <gl/gl.h>
-#include <gl/glu.h>
 #include <sstream>
 #include "Configuration.h"
 #include "imageloader.h"
-
-GLUquadric* quad;
-GLuint textureId;
 
 ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config) {
 	this->x = x;
@@ -41,10 +36,9 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	drawPerpendicular = config.startPerpendicular;
 	turnVectorMode = config.startTurnVectorMode;
 
-	GLuint      PixelFormat;  
+	GLuint PixelFormat;
 	BITMAPINFOHEADER BIH;
-	int iSize=sizeof(BITMAPINFOHEADER);
-	BIH.biSize=iSize;
+	BIH.biSize = sizeof(BITMAPINFOHEADER);
 	BIH.biWidth=width;
 	BIH.biHeight=height;
 	BIH.biPlanes=1;
@@ -79,14 +73,10 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
         0, 0, 0                                                     // Layer Masks Ignored
     };
 	pfd.cColorBits=pfd2.cColorBits;//same color depth needed.
-	DWORD code;
-	code=GetLastError();
 	PixelFormat=ChoosePixelFormat(hDC,&pfd);// now pretend we want a new format
-	int ret;
-	ret=SetPixelFormat(hDC,PixelFormat,&pfd);
-	code=GetLastError();
+	SetPixelFormat(hDC,PixelFormat,&pfd);
 	hRC=wglCreateContext(hDC);
-	ret=wglMakeCurrent(hDC,hRC);					//all standard OpenGL init so far
+	wglMakeCurrent(hDC,hRC);					//all standard OpenGL init so far
 
 	textureId = 0;
 	Image* texture = loadBMP(config.texturePath);
@@ -146,8 +136,9 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 		skp->Text(5, height / 2, "Texture not found!", 18);
 		return;
 	}
-	HDC	hDC = skp->GetDC();
 
+	wglMakeCurrent(hDC, hRC);
+	HDC	hDC = skp->GetDC();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);             // Clear The Screen And The Depth Buffer        
 
 	diameter = zoom * min(width, height);
@@ -453,7 +444,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Normal
-	if (drawNormal){
+	if (drawNormal && isnormal(length(pgd))){
 		double dx = sin(60 * RAD);
 		double dy = sin(30 * RAD);
 		double nmlScale = 1.5;
@@ -477,9 +468,21 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetBrush(brushNormal);
 			skp->SetPen(penNormal);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-			skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
-			skp->Line(ix - (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale), ix, iy + (int)(ch*nmlScale));
-			skp->Line(ix, iy + (int)(ch*nmlScale), ix + (int)(cw*dx*nmlScale), iy - (int)(ch*dy*nmlScale));
+			oapi::IVECTOR2 a1; a1.x = ix - (int)(cw*dx*nmlScale); a1.y = iy - (int)(ch*dy*nmlScale);
+			oapi::IVECTOR2 a2; a2.x = ix + (int)(cw*dx*nmlScale); a2.y = iy - (int)(ch*dy*nmlScale);
+			oapi::IVECTOR2 a3; a3.x = ix; a3.y = iy + (int)(ch*nmlScale);
+			skp->Line(a1.x, a1.y, a2.x, a2.y);
+			skp->Line(a1.x, a1.y, a3.x, a3.y);
+			skp->Line(a3.x, a3.y, a2.x, a2.y);
+			oapi::IVECTOR2 p1; p1.x = (a1.x + a3.x)/2; p1.y = (a1.y + a3.y)/2;
+			oapi::IVECTOR2 p2; p2.x = (a2.x + a3.x) / 2; p2.y = (a2.y + a3.y) / 2;
+			oapi::IVECTOR2 p3; p3.x = (a1.x + a2.x) / 2; p3.y = (a1.y + a2.y) / 2;
+			oapi::IVECTOR2 q1; q1.x = 2 * p1.x - ix; q1.y = 2 * p1.y - iy;
+			oapi::IVECTOR2 q2; q2.x = 2 * p2.x - ix; q2.y = 2 * p2.y - iy;
+			oapi::IVECTOR2 q3; q3.x = 2 * p3.x - ix; q3.y = 2 * p3.y - iy;
+			skp->Line(p1.x, p1.y, q1.x, q1.y);
+			skp->Line(p2.x, p2.y, q2.x, q2.y);
+			skp->Line(p3.x, p3.y, q3.x, q3.y);
 		} else if (!nmlVisible){
 			// No marker visible, draw direction arrow to normal
 			skp->SetPen(penNormal);
@@ -489,7 +492,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Perpendicular out
-	if (drawPerpendicular) {
+	if (drawPerpendicular && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double pepScale = 1.6;
@@ -531,7 +534,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Radial out
-	if (drawRadial) {
+	if (drawRadial && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double radScale = 1.6;

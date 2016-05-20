@@ -10,12 +10,8 @@
 
 // ==============================================================
 // Global variables
-
-static struct {
-	int mode;
-	AttitudeIndicatorMFD *CurrentMFD;
-} g_AttitudeIndicatorMFD;
-
+static int MFDMode;
+static AttitudeIndicatorMFD* CurrentMFD = 0;
 
 // ==============================================================
 // API interface
@@ -31,15 +27,14 @@ DLLCLBK void InitModule (HINSTANCE hDLL)
 	spec.msgproc = AttitudeIndicatorMFD::MsgProc;  // MFD mode callback function
 
 	// Register the new MFD mode with Orbiter
-	g_AttitudeIndicatorMFD.mode = oapiRegisterMFDMode(spec);
-	g_AttitudeIndicatorMFD.CurrentMFD = NULL;
+	MFDMode = oapiRegisterMFDMode(spec);
 }
 
 DLLCLBK void ExitModule (HINSTANCE hDLL)
 {
 	oapiWriteLog("[AttitudeIndicatorMFD] Enter: ExitModule");
 	// Unregister the custom MFD mode when the module is unloaded
-	oapiUnregisterMFDMode(g_AttitudeIndicatorMFD.mode);
+	oapiUnregisterMFDMode(MFDMode);
 }
 
 // ==============================================================
@@ -61,7 +56,6 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	brushWhite = oapiCreateBrush(WHITE);
 	brushBlack = oapiCreateBrush(BLACK);
 	// MFD initialisation
-	g_AttitudeIndicatorMFD.CurrentMFD = this;
 	attref = new AttitudeReferenceADI(pV);
 	config = new Configuration();
 	if (!config->loadConfig(CONFIG_FILE)) {
@@ -96,6 +90,7 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	delete (brushRed);
 	delete (brushWhite);
 	delete (brushBlack);
+	CurrentMFD = 0;
 }
 
 void AttitudeIndicatorMFD::CreateADI() {
@@ -135,36 +130,45 @@ void AttitudeIndicatorMFD::CreateADI() {
 char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 {
 	// The labels for the buttons used by our MFD mode
-	static char *label[11] = {"FRM", "MOD", "TRN", "SPD", "Z+", "Z-", "PGD", "NML", "PER", "RAD", "NAV" };
-	return (bt < 11 ? label[bt] : 0);
+	static char *label[12] = { "FRM", "MOD", "TRI", "", "Z+", "Z-", "PGD", "NML", "PER", "RAD", "SPD", "NAV" };
+	if (frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
+	if (frm == 4 && (bt >= 7 && bt < 10)) return ""; // Only prograde/retrograde in NAV
+	if (mode == 1 && (bt == 10)) return ""; // No SPD in big mode
+	if (frm != 4 && (bt == 11)) return ""; // NAV only in NAV mode
+	return (bt < 12 ? label[bt] : 0);
 }
 
 // Return button menus
 int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 {
 	// The menu descriptions for the buttons
-	static const MFDBUTTONMENU mnu[11] = {
+	static const MFDBUTTONMENU mnu[12] = {
 		{ "Change Frame", 0, 'F' },
 		{ "Change Mode", 0, 'M' },
-		{ "Toggle Turn Vector Indicator", 0, 'T' },
-		{ "Change Speed", 0, 'S' },
+		{ "Toggle Rate", "Indicators", 'T' },
+		{ 0, 0, 0}, // Reserved
 		{ "Zoom in", 0, 'I' },
 		{ "Zoom out", 0, 'O' },
-		{ "Toggle Prograde/Retrograde", 0, 'P' },
-		{ "Toggle Normal/Antinormal", 0, 'N' },
-		{ "Toggle Perpendicular in/out", 0, 'D' },
-		{ "Toggle Radial in/out", 0, 'R' },
-		{ "Select NAV Receiver", 0, 'C' }
+		{ "Toggle Prograde/", "Retrograde", 'P' },
+		{ "Toggle Normal/", "Antinormal", 'N' },
+		{ "Toggle", "Perpendicular", 'D' },
+		{ "Toggle Radial", 0, 'R' },
+		{ "Change Speed", 0, 'S' },
+		{ "Select NAV", "Receiver", 'C' }
 	};
 	if (menu) *menu = mnu;
-	return 11; // return the number of buttons used
+	return 12; // return the number of buttons used
 }
 
 bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 {
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
-	static const DWORD btkey[11] = { OAPI_KEY_F, OAPI_KEY_M, OAPI_KEY_T, OAPI_KEY_S, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_D, OAPI_KEY_R, OAPI_KEY_C };
-	if (bt < 11) return ConsumeKeyBuffered(btkey[bt]);
+	static const DWORD btkey[12] = { OAPI_KEY_F, OAPI_KEY_M, OAPI_KEY_T, 0, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_D, OAPI_KEY_R, OAPI_KEY_S, OAPI_KEY_C };
+	if (frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
+	if (frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
+	if (mode == 1 && (bt == 10)) return 0; // No SPD in big mode
+	if (frm != 4 && (bt == 11)) return 0; // NAV only in NAV mode
+	if (bt < 12) return ConsumeKeyBuffered(btkey[bt]);
 	else return false;
 }
 
@@ -176,6 +180,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		if (mode == 0) zoom += 0.4;
 		if (mode == 1) zoom -= 0.4;
 		CreateADI();
+		InvalidateButtons();
 		return true;
 	case OAPI_KEY_P:
 		adi->TogglePrograde();
@@ -202,6 +207,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_F:
 		frm = (frm + 1) % frmCount;
 		attref->SetMode(frm);
+		InvalidateButtons();
 		return true;
 	case OAPI_KEY_S:
 		speedMode = (speedMode + 1) % speedCount;
@@ -225,10 +231,7 @@ void AttitudeIndicatorMFD::PostStep(double simt, double simdt, double mjd) {
 // Repaint the MFD
 bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 	Title (skp, "Attitude Indicator");
-
-	if (g_AttitudeIndicatorMFD.CurrentMFD != NULL) {
-		g_AttitudeIndicatorMFD.CurrentMFD->PostStep(oapiGetSimTime(), oapiGetSimStep(), oapiGetSimMJD());
-	}
+	PostStep(oapiGetSimTime(), oapiGetSimStep(), oapiGetSimMJD());
 	adi->DrawBall(skp, zoom);
 
 	if (mode == 0)
@@ -638,13 +641,16 @@ std::string AttitudeIndicatorMFD::convertAltString(double altitude) {
 // MFD message parser
 int AttitudeIndicatorMFD::MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 {
-	oapiWriteLog("[AttitudeIndicatorMFD] Enter: MsgProc");
+	//std::string s = "[AttitudeIndicatorMFD] Enter: MsgProc: ";
+	//s.append(std::to_string(msg));
+	//char  buf[50];
+	//strcpy(buf, s.c_str());
+	//oapiWriteLog(buf);
 	switch (msg) {
 	case OAPI_MSG_MFD_OPENED:
 		// Our new MFD mode has been selected, so we create the MFD and
 		// return a pointer to it.
-		return (int)(new AttitudeIndicatorMFD(LOWORD(wparam), HIWORD(wparam), (VESSEL*)lparam));
+		return (int)new AttitudeIndicatorMFD(LOWORD(wparam), HIWORD(wparam), (VESSEL*)lparam);;
 	}
 	return 0;
 }
-

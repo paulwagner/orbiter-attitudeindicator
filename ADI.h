@@ -3,6 +3,8 @@
 
 #include "orbitersdk.h"
 #include "Configuration.h"
+#include <gl/gl.h>
+#include <gl/glu.h>
 
 #define TURNVECTORCOUNT 3
 
@@ -63,6 +65,8 @@ private:
 	HGLRC hRC;
 	HBITMAP hBMP;
 	HBITMAP hBMP_old;
+	GLUquadric* quad;
+	GLuint textureId;
 };
 
 #endif
