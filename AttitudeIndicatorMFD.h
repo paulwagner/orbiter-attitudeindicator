@@ -3,7 +3,7 @@
 
 #define CONFIG_FILE "MFD\\AttitudeIndicatorMFD.cfg"
 #define DEFAULT_FRAME 3
-#define DEFAULT_ZOOM 1.5
+#define DEFAULT_ZOOM 1.2
 #define DEFAULT_MODE 0
 #define DEFAULT_SPEED 0;
 
@@ -36,6 +36,7 @@ protected:
 	AttitudeReferenceADI *attref;
 	Configuration *config;
 	ADI *adi;
+	int chw;
 	void PostStep(double simt, double simdt, double mjd);
 	void CreateADI();
 	void DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height);
@@ -48,6 +49,7 @@ private:
 	oapi::Brush *brushBlue, *brushGreen, *brushRed, *brushWhite, *brushBlack;
 
 	std::string convertAltString(double altitude);
+	std::string convertAngleString(double angle);
 
 };
 

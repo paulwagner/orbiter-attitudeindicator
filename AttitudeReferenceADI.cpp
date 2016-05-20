@@ -1,6 +1,11 @@
 #include "AttitudeReferenceADI.h"
 
 FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
+	ELEMENTS elem;
+	ORBITPARAM orbitparam;
+	int frm = FRAME_EQU;
+	if (GetMode() == 0) frm = FRAME_ECL;
+	OBJHANDLE body;
 	const VESSEL *v = GetVessel();
 	fs.altitude = v->GetAltitude();
 	fs.pitch = v->GetPitch()*DEG;
@@ -18,25 +23,33 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 		oapiGetNavData(navhandle, &ndata);
 		if (ndata.type == TRANSMITTER_IDS) {
 			fs.navTarget = oapiGetVesselInterface(ndata.ids.hVessel);
+			v->GetRelativePos(ndata.ids.hVessel, fs.navTargetRelPos);
+			v->GetRelativeVel(ndata.ids.hVessel, fs.navTargetRelVel);
+			body = fs.navTarget->GetApDist(fs.navTargetAp);
+			fs.navTarget->GetPeDist(fs.navTargetPe);
+			double body_rad = oapiGetSize(body);
+			fs.navTargetAp -= body_rad;
+			fs.navTargetPe -= body_rad;
+			fs.navTarget->GetElements(body, elem, &orbitparam, 0, frm);
+			fs.navTargetInc = elem.i;
 		}
 	}
-	OBJHANDLE body = v->GetApDist(fs.apoapsis);
+	body = v->GetApDist(fs.apoapsis);
 	v->GetPeDist(fs.periapsis);
 	double body_rad = oapiGetSize(body);
 	fs.apoapsis -= body_rad;
 	fs.periapsis -= body_rad;
-	ELEMENTS elem;
-	ORBITPARAM orbitparam;
-	int frm = FRAME_EQU;
-	if (GetMode() == 0) frm = FRAME_ECL;
 	v->GetElements(body, elem, &orbitparam, 0, frm);
 	double m = oapiGetMass(body);
 	fs.os = sqrt(GGRAV * m * (2 / body_rad - 1 / elem.a));
 	fs.tas = v->GetAirspeed();
 	fs.apoT = orbitparam.ApT;
 	fs.periT = orbitparam.PeT;
+	fs.t = orbitparam.T;
+	fs.lan = elem.theta;
 	fs.ecc = elem.e;
 	fs.inc = elem.i;
+	v->GetEquPos(fs.lon, fs.lat, fs.r);
 	return fs;
 }
 

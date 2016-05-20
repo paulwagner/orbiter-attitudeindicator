@@ -587,7 +587,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		return; // No markers in ECL and EQU
 
 	// Prograde
-	if (drawPrograde && (frm != 4 || fs.navTarget != 0)) {
+	if (drawPrograde && (frm != 4 || fs.navTarget != 0) && isnormal(length(pgd))) {
 		double d = sin(45 * RAD);
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;

@@ -18,9 +18,19 @@ typedef struct {
 	double periapsis;
 	double apoT;
 	double periT;
+	double t;
 	double ecc;
 	double inc;
+	double lan;
+	double lat;
+	double lon;
+	double r;
 	VESSEL* navTarget;
+	VECTOR3 navTargetRelPos;
+	VECTOR3 navTargetRelVel;
+	double navTargetInc;
+	double navTargetAp;
+	double navTargetPe;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {
