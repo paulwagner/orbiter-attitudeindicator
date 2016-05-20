@@ -374,10 +374,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	int th = skp->GetCharSize() & 0xFFFF;
 	skp->SetPen(penBlack);
 	skp->SetBrush(brushBlack);
-	skp->Rectangle(cp1_x - (int)(1.25*chw), mid_y - (th / 2), cp1_x - (int)(1.25*chw) - max(cur_width,tw), mid_y + (th / 2));
+	skp->Rectangle(cp1_x - (int)(1.25*chw), mid_y - (th * 2 / 3), cp1_x - (int)(1.25*chw) - max(cur_width, tw), mid_y + (th * 2 / 3));
 	skp->SetBrush(NULL);
 	skp->SetPen(penGreen);
-	skp->Rectangle(cp1_x - (int)(1.25*chw), mid_y - (th / 2), cp1_x - (int)(1.25*chw) - max(cur_width,tw), mid_y + (th / 2));
+	skp->Rectangle(cp1_x - (int)(1.25*chw), mid_y - (th * 2 / 3), cp1_x - (int)(1.25*chw) - max(cur_width, tw), mid_y + (th * 2 / 3));
 	skp->SetTextColor(GREEN);
 	int offset = (cur_width - tw);
 	if (offset < 0)
@@ -479,10 +479,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	th = skp->GetCharSize() & 0xFFFF;
 	skp->SetPen(penBlack);
 	skp->SetBrush(brushBlack);
-	skp->Rectangle(cp2_x + (int)(1.25*chw), mid_y - (th / 2), cp2_x + (int)(1.25*chw) + cur_width, mid_y + (th / 2));
+	skp->Rectangle(cp2_x + (int)(1.25*chw), mid_y - (th * 2 / 3), cp2_x + (int)(1.25*chw) + cur_width, mid_y + (th * 2 / 3));
 	skp->SetBrush(NULL);
 	skp->SetPen(penGreen);
-	skp->Rectangle(cp2_x + (int)(1.25*chw), mid_y - (th / 2), cp2_x + (int)(1.25*chw) + cur_width, mid_y + (th / 2));
+	skp->Rectangle(cp2_x + (int)(1.25*chw), mid_y - (th * 2 / 3), cp2_x + (int)(1.25*chw) + cur_width, mid_y + (th * 2 / 3));
 	skp->SetTextColor(GREEN);
 	offset = (cur_width - tw);
 	skp->TextBox(cp2_x + (int)(1.25*chw) + (offset / 2), mid_y - (th / 2), cp2_x + (int)(1.25*chw) + (offset / 2) + tw, mid_y + (th / 2), s.c_str(), s.length());
@@ -493,8 +493,11 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->Rectangle(x, y, x + width, cp1_y);
 	skp->Rectangle(x, y + height, x + width, y + height + 10);
 	skp->SetBrush(NULL);
-	skp->TextBox(x, y, cp1_x, cp1_y, spd.c_str(), spd.length());
-	skp->TextBox(cp2_x, y, x + width, cp1_y, "ALT km", 6);
+	double w = cp1_x - x - skp->GetTextWidth(spd.c_str(), spd.length());
+	skp->TextBox(x + (int)(w / 2), y + (int)(chw / 4), cp1_x - (int)(w / 2), cp1_y, spd.c_str(), spd.length());
+	std::string alt = "ALT km";
+	w = width - cp2_x - skp->GetTextWidth(alt.c_str(), alt.length());
+	skp->TextBox(cp2_x + (int)(w / 2), y + (int)(chw / 4), x + width - (int)(w / 2), cp1_y, alt.c_str(), alt.length());
 
 
 	// Draw text
@@ -505,10 +508,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->Line(cp1_x + chw3, cp1_y, cp2_x - chw3, cp1_y);
 	skp->Line(cp1_x + (mid_width / 2), cp1_y, cp1_x + (mid_width / 2), y + height);
 	skp->SetTextColor(WHITE);
-	skp->TextBox(cp1_x + chw3, y, cp1_x + (mid_width / 2), cp1_y, frmStrings[frm], strlen(frmStrings[frm]));
+	skp->TextBox(cp1_x + chw3, y + (int)(chw / 4), cp1_x + (mid_width / 2), cp1_y, frmStrings[frm], strlen(frmStrings[frm]));
 	char buf[50];
 	if (attref->GetReferenceName(buf, 50)) {
-		skp->TextBox(cp1_x + (mid_width / 2) + chw3, y, cp2_x - chw3, cp1_y, buf, strlen(buf));
+		skp->TextBox(cp1_x + (mid_width / 2) + chw3, y + (int)(chw / 4), cp2_x - chw3, cp1_y, buf, strlen(buf));
 	}
 	skp->SetFont(fsmall);
 	int iy = cp1_y + chw3;
