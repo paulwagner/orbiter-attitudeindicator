@@ -8,7 +8,7 @@
 #include <sstream>
 #include "Configuration.h"
 
-#define SRFNAVTYPE(x) (x == TRANSMITTER_ILS || x == TRANSMITTER_VOR || x == TRANSMITTER_VTOL)
+#define SRFNAVTYPE(x) (x == TRANSMITTER_NONE ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
 
 // ==============================================================
 // Global variables
@@ -142,7 +142,10 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 	// The labels for the buttons used by our MFD mode
 	static char *label[12] = { "FRM", "MOD", "TRI", "", "Z+", "Z-", "PGD", "NML", "PER", "RAD", "SPD", "NAV" };
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
+	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 8)) return "OB+";
+	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 9)) return "OB-";
 	if (frm == 4 && (bt >= 7 && bt < 10)) return ""; // Only prograde/retrograde in NAV
+	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt >= 6 && bt < 10)) return ""; // No markers in surface NAV mode
 	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return ""; // SPD only in surface text mode
 	if (frm != 4 && (bt == 11)) return ""; // NAV only in NAV mode
 	return (bt < 12 ? label[bt] : 0);
@@ -170,13 +173,23 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 	return 12; // return the number of buttons used
 }
 
+static int ctr = 0;
 bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 {
-	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
 	static const DWORD btkey[12] = { OAPI_KEY_F, OAPI_KEY_M, OAPI_KEY_T, 0, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_D, OAPI_KEY_R, OAPI_KEY_S, OAPI_KEY_C };
+	if (event & PANEL_MOUSE_LBPRESSED) {
+		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 8 || bt == 9)){
+			if (ctr < 5) { ctr++; return true; }
+			ctr = 0;
+			return ConsumeKeyBuffered(btkey[bt]);
+		}
+	}
+
+	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
 	if (frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
-	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return ""; // SPD only in surface text mode
+	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
+	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return 0; // SPD only in surface text mode
 	if (frm != 4 && (bt == 11)) return 0; // NAV only in NAV mode
 	if (bt < 12) return ConsumeKeyBuffered(btkey[bt]);
 	else return false;
@@ -184,6 +197,7 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 
 bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 {
+	double crs;
 	switch (key) {
 	case OAPI_KEY_M:
 		mode = (mode + 1) % modeCount;
@@ -199,9 +213,25 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		adi->ToggleNormal();
 		return true;
 	case OAPI_KEY_R:
+		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)) {
+			// Button OB- in NAV mode
+			crs = attref->GetFlightStatus().navCrs[attref->GetNavid()];
+			crs -= RAD;
+			if (crs < 0) crs += 2 * PI;
+			attref->GetFlightStatus().navCrs[attref->GetNavid()] = crs;
+			return true;
+		}
 		adi->ToggleRadial();
 		return true;
 	case OAPI_KEY_D:
+		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)) {
+			// Button OB+ in NAV mode
+			crs = attref->GetFlightStatus().navCrs[attref->GetNavid()];
+			crs += RAD;
+			if (crs >= 2 * PI) crs -= 2 * PI;
+			attref->GetFlightStatus().navCrs[attref->GetNavid()] = crs;
+			return true;
+		}
 		adi->TogglePerpendicular();
 		return true;
 	case OAPI_KEY_T:
@@ -228,6 +258,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 			int nid = attref->GetNavid();
 			attref->SetNavid((nid + 1) % nc);
 		}
+		InvalidateButtons();
 		return true;
 	}
 	return false;
@@ -545,13 +576,32 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	int th = skp->GetCharSize() & 0xFFFF;
 	int iy = cp1_y + chw3;
 	if (frm == 4) {
-		if (fs.hasNavTarget) {
-			if (SRFNAVTYPE(fs.navType)) {
+		if (SRFNAVTYPE(fs.navType)) {
+			// Row 1
+			std::string s = std::to_string((int)round(fs.pitch*DEG));
+			s.append("°");
+			WriteText(skp, cp1_x + chw3, iy, kw, "PTCH", s);
+			s = std::to_string((int)round(abs(fs.bank*DEG)));
+			s.append("°");
+			if (fs.bank < 0) s.append("R"); else s.append("L");
+			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BNK", s);
+			
+			// Row 2
+			iy += (chw3 + th);
+			WriteText(skp, cp1_x + chw3, iy, kw, "CRS", convertAngleString(fs.navCrs[attref->GetNavid()]));
 
+			if (fs.hasNavTarget) {
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BRG", convertAngleString(fs.navBrg));
+
+				// Row 3
+				iy += (chw3 + th);
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "DST", convertAltString(length(fs.navTargetRelPos)));
 			}
-			else {
+		}
+
+		if (fs.hasNavTarget) {
+			if (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR){
 				double dp = dotp(fs.navTargetRelVel, fs.navTargetRelPos);
-				//if (dp < 0) dp = -1; else dp = 1;
 				double cvel = dp / length(fs.navTargetRelPos);
 
 				// Row 1
@@ -616,7 +666,8 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				if (cvel > 0) {
 					skp->SetBrush(brushYellow2);
 					skp->SetPen(penYellow2);
-				} else {
+				}
+				else {
 					skp->SetBrush(brushGreen2);
 					skp->SetPen(penGreen2);
 				}
@@ -639,8 +690,6 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 						skp->Text(x2 + chw3, ay - (int)(th / 2) - chw3, s.c_str(), s.length());
 					}
 				}
-
-
 			}
 		}
 	}

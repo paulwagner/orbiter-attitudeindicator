@@ -1,6 +1,17 @@
 #include "AttitudeReferenceADI.h"
 #include <string>
 
+AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeReference(vessel) {
+	fs.navCnt = vessel->GetNavCount();
+	fs.navCrs = (double*)malloc(sizeof(double) * fs.navCnt);
+	for (int i = 0; i < fs.navCnt; i++)
+		fs.navCrs[i] = 0;
+}
+
+AttitudeReferenceADI::~AttitudeReferenceADI() {
+	if (fs.navCrs) delete fs.navCrs;
+}
+
 FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	const VESSEL *v = GetVessel();
 	VECTOR3 vec;
@@ -13,6 +24,9 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
 	fs.docked = (v->DockingStatus(0) == 1);
+	oapiGetHeading(v->GetHandle(), &fs.heading);
+	oapiGetPitch(v->GetHandle(), &fs.pitch);
+	oapiGetBank(v->GetHandle(), &fs.bank);
 	// Target-relative Parameters
 	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
 	NAVDATA ndata;
@@ -21,17 +35,16 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	if (navhandle) {
 		oapiGetNavData(navhandle, &ndata);
 		fs.navType = ndata.type;
-		if (ndata.type == TRANSMITTER_VOR) {
-			fs.hasNavTarget = true;
-		}
-		else if (ndata.type == TRANSMITTER_IDS) {
-			OBJHANDLE tgtv = ndata.ids.hVessel;
-			VECTOR3 tgtpos, vPos;
-			oapiGetNavPos(navhandle, &tgtpos);
-			v->GetGlobalPos(vPos);
-			fs.hasNavTarget = true;
-			fs.navTargetRelPos = tgtpos - vPos;
-			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
+		fs.hasNavTarget = true;
+
+		OBJHANDLE tgtv = ndata.ids.hVessel;
+		VECTOR3 tgtpos, vPos;
+		oapiGetNavPos(navhandle, &tgtpos);
+		v->GetGlobalPos(vPos);
+		fs.navTargetRelPos = tgtpos - vPos;
+		v->GetRelativeVel(tgtv, fs.navTargetRelVel);
+
+		if (ndata.type == TRANSMITTER_IDS) {
 			// Correct vessel docking port offset
 			DOCKHANDLE vDh = v->GetDockHandle(0); // TODO: how to get correct docking handle of current vessel?
 			if (vDh != 0) {
@@ -41,13 +54,13 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 				fs.navTargetRelPos -= vDpos;
 			}
 		}
-		else if (ndata.type != TRANSMITTER_NONE) {
-			OBJHANDLE tgtv = ndata.xpdr.hVessel; // Union, also gets hBase in case of VTOL and ILS
-			fs.hasNavTarget = true;
-			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
-			v->GetRelativePos(tgtv, fs.navTargetRelPos);
+		else if (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL) {
+			VECTOR3 dir = tmul(GetFrameRotMatrix(), unit(tgtpos - vPos));
+			if (GetProjMode() == 0) fs.navBrg = atan2(dir.x, dir.z); else fs.navBrg = asin(dir.x);
+			fs.navBrg = posangle(fs.navBrg);
+			if (ndata.type == TRANSMITTER_ILS)
+				fs.navCrs[GetNavid()] = ndata.ils.appdir;
 		}
-
 	}
 	// Surface-relative parameters
 	body = v->GetEquPos(fs.lon, fs.lat, fs.r);

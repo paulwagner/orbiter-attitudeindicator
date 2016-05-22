@@ -362,7 +362,8 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		attref->GetAirspeedDirection(pgd, nml, rad, pep); // Surface relative vector in LH/LN
 	else if (frm == 4 && fs.hasNavTarget)
 		attref->GetTargetDirections(tgt, pgd); // Target relative vector in NAV
-	else
+	
+	if (frm <= 1)
 		return; // No markers in ECL and EQU
 
 	// Prograde
@@ -404,59 +405,89 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 
 	}
 
-	// Target marker
-	if (frm == 4 && fs.hasNavTarget){
-		int tx = (int)(cw / 2);
-		int ty = (int)(ch / 2);
-		double d = sin(45 * RAD);
-		ProjectVector(tgt, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		bool tgtVisible = false;
-		oapi::IVECTOR2 tgtDir; tgtDir.x = ix; tgtDir.y = iy;
-		if (abs(phi) <= phiF) {
-			tgtVisible = true;
-			skp->SetPen(penTarget);
-			skp->SetBrush(brushTarget);
-			skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
-			skp->SetBrush(NULL);
-			DrawArc(skp, ix + tx, iy - ty, (int)(cw), 0, 90);
-			DrawArc(skp, ix + tx, iy + ty, (int)(cw), 90, 180);
-			DrawArc(skp, ix - tx, iy + ty, (int)(cw), 180, 270);
-			DrawArc(skp, ix - tx, iy - ty, (int)(cw), 270, 360);
+	if (frm == 4){
+		// Target marker
+		if (fs.hasNavTarget){
+			int tx = (int)(cw / 2);
+			int ty = (int)(ch / 2);
+			double d = sin(45 * RAD);
+			ProjectVector(tgt, x, y, phi);
+			ix = (int)x, iy = (int)y;
+			bool tgtVisible = false;
+			oapi::IVECTOR2 tgtDir; tgtDir.x = ix; tgtDir.y = iy;
+			if (abs(phi) <= phiF) {
+				tgtVisible = true;
+				skp->SetPen(penTarget);
+				skp->SetBrush(brushTarget);
+				skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
+				skp->SetBrush(NULL);
+				DrawArc(skp, ix + tx, iy - ty, (int)(cw), 0, 90);
+				DrawArc(skp, ix + tx, iy + ty, (int)(cw), 90, 180);
+				DrawArc(skp, ix - tx, iy + ty, (int)(cw), 180, 270);
+				DrawArc(skp, ix - tx, iy - ty, (int)(cw), 270, 360);
+			}
+			// Anti-target
+			ProjectVector(-tgt, x, y, phi);
+			ix = (int)x, iy = (int)y;
+			if (abs(phi) <= phiF) {
+				skp->SetPen(penTarget);
+				skp->SetBrush(brushTarget);
+				skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
+				skp->SetBrush(NULL);
+				skp->Line(ix, iy + (int)ch, ix, iy + 2 * (int)ch);
+				skp->Line(ix + (int)(cw*d), iy - (int)(ch*d), ix + 2 * (int)(cw*d), iy - 2 * (int)(ch*d));
+				skp->Line(ix - (int)(cw*d), iy - (int)(ch*d), ix - 2 * (int)(cw*d), iy - 2 * (int)(ch*d));
+			}
+			else if (!tgtVisible){
+				// No marker visible, draw direction arrow to target
+				skp->SetPen(penTarget);
+				skp->SetBrush(brushTarget);
+				DrawDirectionArrow(skp, tgtDir);
+			}
 		}
-		// Anti-target
-		ProjectVector(-tgt, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		if (abs(phi) <= phiF) {
-			skp->SetPen(penTarget);
-			skp->SetBrush(brushTarget);
-			skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
-			skp->SetBrush(NULL);
-			skp->Line(ix, iy + (int)ch, ix, iy + 2 * (int)ch);
-			skp->Line(ix + (int)(cw*d), iy - (int)(ch*d), ix + 2 * (int)(cw*d), iy - 2 * (int)(ch*d));
-			skp->Line(ix - (int)(cw*d), iy - (int)(ch*d), ix - 2 * (int)(cw*d), iy - 2 * (int)(ch*d));
-		} else if (!tgtVisible){
-			// No marker visible, draw direction arrow to target
-			skp->SetPen(penTarget);
-			skp->SetBrush(brushTarget);
-			DrawDirectionArrow(skp, tgtDir);
+	
+		// Draw course marker
+		if (fs.navType == TRANSMITTER_ILS || fs.navType == TRANSMITTER_NONE || fs.navType == TRANSMITTER_VOR) {
+			int tx = (int)(cw);
+			int ty = (int)(ch);
+			double crs = fs.navCrs[attref->GetNavid()];
+			VECTOR3 chvec;
+			double sinp = sin(crs), cosp = cos(crs);
+			if (attref->GetProjMode() == 0)
+				chvec = _V(RAD*sinp, 0, RAD*cosp);
+			else
+				chvec = _V(0, RAD*sinp, RAD*cosp);
+			ProjectVector(chvec, x, y, phi);
+			ix = (int)x, iy = (int)y;
+			if (abs(phi) <= phiF) {
+				double dx = sin(60 * RAD);
+				double dy = sin(30 * RAD);
+				double crsScale = 1.5;
+				skp->SetPen(penPerpendicular);
+				skp->SetBrush(NULL);
+				skp->Line(ix, iy - (int)(ch * 2 / 3), ix, iy + (int)(ch / 3));
+				skp->Line(ix - (int)(cw*dx*crsScale), iy + (int)(ch*dy*crsScale), ix + (int)(cw*dx*crsScale), iy + (int)(ch*dy*crsScale));
+				skp->Line(ix - (int)(cw*dx*crsScale), iy + (int)(ch*dy*crsScale), ix, iy - (int)(ch*crsScale));
+				skp->Line(ix, iy - (int)(ch*crsScale), ix + (int)(cw*dx*crsScale), iy + (int)(ch*dy*crsScale));
+
+			}
+		}
+		// Draw docking port
+		if (fs.navType == TRANSMITTER_IDS) {
+			int tx = (int)(cw);
+			int ty = (int)(ch);
+			ProjectVector(dock, x, y, phi);
+			ix = (int)x, iy = (int)y;
+			if (abs(phi) <= phiF) {
+				skp->SetPen(penWing);
+				skp->SetBrush(NULL);
+				skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
+			}
 		}
 
-	}
-	// Draw docking port
-	if (frm == 4 && fs.navType == TRANSMITTER_IDS) {
-		int tx = (int)(cw);
-		int ty = (int)(ch);
-		ProjectVector(dock, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		if (abs(phi) <= phiF) {
-			skp->SetPen(penWing);
-			skp->SetBrush(NULL);
-			skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
-		}
+		return; // No normal/radial markers in NAV mode	
 	}
 
-	return; // No normal/radial markers in NAV mode
 
 	// Normal
 	if (drawNormal && isnormal(length(pgd))){

@@ -88,6 +88,7 @@ void AttitudeReference::SetTgtOffset (const VECTOR3 &ofs)
 const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 {
 	// Returns rotation matrix for rotation from reference frame to global frame
+	NAVDATA ndata;
 
 	if (!valid_axes) {
 		VECTOR3 axis1, axis2, axis3;
@@ -123,7 +124,6 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 			axis3 = crossp (axis2,yaxis);
 			} break;
 		case 4: {  // synced to NAV source (type-specific)
-			NAVDATA ndata;
 			NAVHANDLE hNav = v->GetNavSource (navid);
 			axis3 = _V(0,0,1);
 			axis2 = _V(0,1,0);
@@ -146,7 +146,18 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 					axis3 = _V(R.m13, R.m23, R.m33);
 					axis2 = _V(R.m12, R.m22, R.m32);
 				} break;
-				case TRANSMITTER_ILS:
+				default: {
+					// Local heading in VTOL/VOR/ILS mode
+					OBJHANDLE hRef = v->GetSurfaceRef();
+					v->GetRelativePos(hRef, axis2);
+					axis2 = unit(axis2);
+					MATRIX3 prot;
+					oapiGetRotationMatrix(hRef, &prot);
+					VECTOR3 paxis = { prot.m12, prot.m22, prot.m32 };  // planet rotation axis in global frame
+					VECTOR3 yaxis = unit(crossp(paxis, axis2));      // direction of yaw=+90 pole in global frame
+					axis3 = crossp(axis2, yaxis);
+				} break;
+					/*
 				case TRANSMITTER_VTOL:
 				case TRANSMITTER_VOR: {
 					OBJHANDLE hRef = v->GetSurfaceRef();
@@ -158,12 +169,26 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 					npos -= spos;
 					axis3 = unit(crossp(crossp(axis2,npos),axis2));
 					} break;
+					*/
 				}
 			}
+			else{
+				// Local heading in if no station is tuned
+				OBJHANDLE hRef = v->GetSurfaceRef();
+				v->GetRelativePos(hRef, axis2);
+				axis2 = unit(axis2);
+				MATRIX3 prot;
+				oapiGetRotationMatrix(hRef, &prot);
+				VECTOR3 paxis = { prot.m12, prot.m22, prot.m32 };  // planet rotation axis in global frame
+				VECTOR3 yaxis = unit(crossp(paxis, axis2));      // direction of yaw=+90 pole in global frame
+				axis3 = crossp(axis2, yaxis);
+			}
+			
 			} break;
 		}
-		axis1 = crossp(axis2,axis3);
-		R = _M(axis1.x, axis2.x, axis3.x,  axis1.y, axis2.y, axis3.y,  axis1.z, axis2.z, axis3.z);
+
+		axis1 = crossp(axis2, axis3);
+		R = _M(axis1.x, axis2.x, axis3.x, axis1.y, axis2.y, axis3.y, axis1.z, axis2.z, axis3.z);
 
 		valid_axes = true;
 		valid_euler = false;
@@ -293,7 +318,7 @@ void AttitudeReference::PostStep (double simt, double simdt, double mjd)
 					oapiGetGlobalVel (hObj, &tvel);
 					tvel += mul (Rp, _V(-sin(data.vor.lng),0,cos(data.vor.lng)) * PI2/oapiGetPlanetPeriod(hObj)*oapiGetSize(hObj)*cos(data.vor.lat));
 					tgt_rvel = svel-tvel;
-					sprintf (oapiDebugString(), "rvel: x=%f, y=%f, z=%f", tgt_rvel.x, tgt_rvel.y, tgt_rvel.z);
+					//sprintf (oapiDebugString(), "rvel: x=%f, y=%f, z=%f", tgt_rvel.x, tgt_rvel.y, tgt_rvel.z);
 					} return; // done
 			}
 			if (hObj) {

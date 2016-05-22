@@ -9,6 +9,9 @@ typedef struct {
 	double pitchrate;
 	double yawrate;
 	double rollrate;
+	double heading;
+	double pitch;
+	double bank;
 	double tas;
 	double os;
 	double ias;
@@ -24,19 +27,19 @@ typedef struct {
 	double lat;
 	double lon;
 	double r;
-	//OBJHANDLE navTarget;
 	bool hasNavTarget;
 	VECTOR3 navTargetRelPos;
 	VECTOR3 navTargetRelVel;
-	//double navTargetInc;
-	//double navTargetAp;
-	//double navTargetPe;
+	double navBrg;
+	int navCnt;
+	double* navCrs;
 	DWORD navType;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {
 public:
-  AttitudeReferenceADI(const VESSEL* vessel) : AttitudeReference(vessel){};
+  AttitudeReferenceADI(const VESSEL* vessel);
+  ~AttitudeReferenceADI();
   FLIGHTSTATUS &GetFlightStatus();
   bool GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
