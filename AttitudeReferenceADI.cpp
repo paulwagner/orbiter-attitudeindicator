@@ -26,27 +26,20 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 		}
 		else if (ndata.type == TRANSMITTER_IDS) {
 			OBJHANDLE tgtv = ndata.ids.hVessel;
-			VESSEL* tgt = oapiGetVesselInterface(tgtv);
-			VECTOR3 tDpos, tDdir, tDrot;
-			tgt->GetDockParams(ndata.ids.hDock, tDpos, tDdir, tDrot);
-			tgt->GlobalRot(tDpos, tDpos);
-			VECTOR3 tgtpos;
-			oapiGetGlobalPos(tgtv, &tgtpos);
-			VECTOR3 vDpos, vDdir, vDrot;
-			// TODO: how to get correct docking handle of current vessel?
-			DOCKHANDLE vDh = v->GetDockHandle(0);
+			VECTOR3 tgtpos, vPos;
+			oapiGetNavPos(navhandle, &tgtpos);
+			v->GetGlobalPos(vPos);
+			fs.hasNavTarget = true;
+			fs.navTargetRelPos = tgtpos - vPos;
+			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
+			// Correct vessel docking port offset
+			DOCKHANDLE vDh = v->GetDockHandle(0); // TODO: how to get correct docking handle of current vessel?
 			if (vDh != 0) {
+				VECTOR3 vDpos, vDdir, vDrot;
 				v->GetDockParams(vDh, vDpos, vDdir, vDrot);
 				v->GlobalRot(vDpos, vDpos);
-				VECTOR3 vPos;
-				v->GetGlobalPos(vPos);
-				fs.navTargetRelPos = (tgtpos + tDpos) - (vPos + vDpos);
-			} else {
-				fs.navTargetRelPos = _V(0, 0, 0);
+				fs.navTargetRelPos -= vDpos;
 			}
-
-			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
-			fs.hasNavTarget = true;
 		}
 		else if (ndata.type != TRANSMITTER_NONE) {
 			OBJHANDLE tgtv = ndata.xpdr.hVessel; // Union, also gets hBase in case of VTOL and ILS
@@ -163,6 +156,24 @@ bool AttitudeReferenceADI::GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel)
 	GetTgtEulerAngles(euler);
 	CalculateDirection(euler, tgtvel);
 	return true;
+}
+
+bool AttitudeReferenceADI::GetDockingPortDirection(VECTOR3& dockPort) {
+	DOCKHANDLE vDh = GetVessel()->GetDockHandle(0); // TODO: how to get correct docking handle of current vessel?
+	if (vDh != 0) {
+		MATRIX3 srot;
+		GetVessel()->GetRotationMatrix(srot);
+		dockPort = _V(srot.m13, srot.m23, srot.m33);
+
+		VECTOR3 vDpos, vDdir, vDrot;
+		GetVessel()->GetDockParams(vDh, vDpos, vDdir, vDrot);
+		GetVessel()->GlobalRot(vDpos, vDpos);
+		dockPort += vDpos;
+		dockPort = tmul(GetFrameRotMatrix(), unit(dockPort));
+		normalise(dockPort);
+		return true;
+	}
+	return false;
 }
 
 void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {

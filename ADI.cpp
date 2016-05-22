@@ -249,7 +249,7 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->LineTo(width / 2, height / 2 + (int)ch);
 	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 2);
 	skp->LineTo(width / 2 + (int)(cw * 4), height / 2);
-	skp->Rectangle(width / 2 + 2, height / 2 + 2, width / 2 - 2, height / 2 - 2);
+	skp->Rectangle(width / 2 + 1, height / 2 + 1, width / 2 - 1, height / 2 - 1);
 }
 
 void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
@@ -346,7 +346,7 @@ void DrawArc(oapi::Sketchpad* skp, double x, double y, double r, double s, doubl
 void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	VECTOR3 pgd, nml, rad, pep, tgt;
+	VECTOR3 pgd, nml, rad, pep, tgt, dock;
 	int frm = attref->GetMode();
 	double phi;
 	double x, y;
@@ -354,6 +354,8 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	double phiF = 70; // max marker view angle
 
 	// Calculate direction vectors
+	if (frm == 4 && fs.navType == TRANSMITTER_IDS)
+		attref->GetDockingPortDirection(dock);
 	if (frm == 2)
 		attref->GetOrbitalSpeedDirection(pgd, nml, rad, pep); // Orbital relative vector in OV/OM
 	else if (frm == 3)
@@ -440,8 +442,21 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			DrawDirectionArrow(skp, tgtDir);
 		}
 
-		return; // No normal/radial markers in NAV mode
 	}
+	// Draw docking port
+	if (frm == 4 && fs.navType == TRANSMITTER_IDS) {
+		int tx = (int)(cw);
+		int ty = (int)(ch);
+		ProjectVector(dock, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			skp->SetPen(penWing);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
+		}
+	}
+
+	return; // No normal/radial markers in NAV mode
 
 	// Normal
 	if (drawNormal && isnormal(length(pgd))){

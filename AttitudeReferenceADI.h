@@ -41,6 +41,7 @@ public:
   bool GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel);
+  bool GetDockingPortDirection(VECTOR3& dockPort);
   bool GetReferenceName(char *string, int n);
 
 private:

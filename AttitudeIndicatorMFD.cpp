@@ -550,30 +550,34 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 			}
 			else {
+				double dp = dotp(fs.navTargetRelVel, fs.navTargetRelPos);
+				//if (dp < 0) dp = -1; else dp = 1;
+				double cvel = dp / length(fs.navTargetRelPos);
+
 				// Row 1
 				WriteText(skp, cp1_x + chw3, iy, kw, "DST", convertAltString(length(fs.navTargetRelPos)));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "CVEL", convertAltString(-length(fs.navTargetRelVel)));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "CVEL", convertAltString(cvel));
 
 				// Row 2
 				iy += (chw3 + th);
-				WriteText(skp, cp1_x + chw3, iy, kw, "XDST", convertAltString(fs.navTargetRelPos.x));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "XVEL", convertAltString(fs.navTargetRelVel.x));
+				WriteText(skp, cp1_x + chw3, iy, kw, "xDST", convertAltString(fs.navTargetRelPos.x));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "xVEL", convertAltString(fs.navTargetRelVel.x));
 
 				// Row 3
 				iy += (chw3 + th);
-				WriteText(skp, cp1_x + chw3, iy, kw, "YDST", convertAltString(fs.navTargetRelPos.y));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "YVEL", convertAltString(fs.navTargetRelVel.y));
+				WriteText(skp, cp1_x + chw3, iy, kw, "yDST", convertAltString(fs.navTargetRelPos.y));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "yVEL", convertAltString(fs.navTargetRelVel.y));
 
 				// Row 4
 				iy += (chw3 + th);
-				WriteText(skp, cp1_x + chw3, iy, kw, "ZDST", convertAltString(fs.navTargetRelPos.z));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "ZVEL", convertAltString(fs.navTargetRelVel.z));
+				WriteText(skp, cp1_x + chw3, iy, kw, "zDST", convertAltString(fs.navTargetRelPos.z));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "zVEL", convertAltString(fs.navTargetRelVel.z));
 
 				// Indicators
+				skp->SetTextColor(WHITE);
 				if (fs.docked) {
 					skp->SetBrush(brushRed);
 					skp->SetPen(penRed);
-					skp->SetTextColor(WHITE);
 					int tw = skp->GetTextWidth("DOCKED", 6);
 					int offset = (int)((cp1_x - x - tw) / 2);
 					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
@@ -597,12 +601,19 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
 				skp->SetBrush(NULL);
 				skp->SetPen(penWhite);
-				skp->Rectangle(x1, y1, x2, y2);
-				for (int i = 1; i < 4; i++) {
-					skp->Line(x1, y1 + i * (int)(h / 4), x2, y1 + i * (int)(h / 4));
+				skp->Line(x1, y1, x1, y2);
+				skp->Line(x2, y1, x2, y2);
+				for (int i = 0; i < 5; i++) {
+					int ay = y2 - (int)((i * h) / 4);
+					skp->Line(x1, ay, x2, ay);
+					if (i < 4) {
+						std::string s = std::to_string(i - 1);
+						int tw = skp->GetTextWidth(s.c_str(), s.length());
+						skp->Text(x1 - tw - chw3, ay - (int)(th / 2) - chw3, s.c_str(), s.length());
+					}
 				}
 
-				if (fs.navTargetRelVel.x < 0) {
+				if (cvel > 0) {
 					skp->SetBrush(brushYellow2);
 					skp->SetPen(penYellow2);
 				} else {
@@ -618,9 +629,15 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
 				skp->SetBrush(NULL);
 				skp->SetPen(penWhite);
-				skp->Rectangle(x1, y1, x2, y2);
-				for (int i = 1; i < 4; i++) {
-					skp->Line(x1, y1 + i * (int)(h / 4), x2, y1 + i * (int)(h / 4));
+				skp->Line(x1, y1, x1, y2);
+				skp->Line(x2, y1, x2, y2);
+				for (int i = 0; i < 5; i++) {
+					int ay = y2 - (int)((i * h) / 4);
+					skp->Line(x1, ay, x2, ay);
+					if (i < 4) {
+						std::string s = std::to_string(i - 1);
+						skp->Text(x2 + chw3, ay - (int)(th / 2) - chw3, s.c_str(), s.length());
+					}
 				}
 
 
