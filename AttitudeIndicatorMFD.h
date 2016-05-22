@@ -45,8 +45,8 @@ protected:
 	int mode;
 	int speedMode;
 private:
-	oapi::Pen *penBlue, *penGreen, *penRed, *penWhite, *penBlack;
-	oapi::Brush *brushBlue, *brushGreen, *brushRed, *brushWhite, *brushBlack;
+	oapi::Pen *penBlue, *penGreen, *penGreen2, *penRed, *penWhite, *penBlack, *penYellow2;
+	oapi::Brush *brushBlue, *brushGreen, *brushGreen2, *brushRed, *brushWhite, *brushBlack, *brushYellow2;
 
 	std::string convertAltString(double altitude);
 	std::string convertAngleString(double angle);

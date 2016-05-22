@@ -49,14 +49,18 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	oapiWriteLog("[AttitudeIndicatorMFD] Enter: _cdecl");
 	penBlue = oapiCreatePen(1, 1, BLUE);
 	penGreen = oapiCreatePen(1, 1, GREEN);
+	penGreen2 = oapiCreatePen(1, 1, GREEN2);
 	penRed = oapiCreatePen(1, 1, RED);
 	penWhite = oapiCreatePen(1, 1, WHITE);
 	penBlack = oapiCreatePen(1, 1, BLACK);
+	penYellow2 = oapiCreatePen(1, 1, YELLOW2);
 	brushBlue = oapiCreateBrush(BLUE);
 	brushGreen = oapiCreateBrush(GREEN);
+	brushGreen2 = oapiCreateBrush(GREEN2);
 	brushRed = oapiCreateBrush(RED);
 	brushWhite = oapiCreateBrush(WHITE);
 	brushBlack = oapiCreateBrush(BLACK);
+	brushYellow2 = oapiCreateBrush(YELLOW2);
 	// MFD initialisation
 	attref = new AttitudeReferenceADI(pV);
 	config = new Configuration();
@@ -84,14 +88,18 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	delete (config);
 	delete (penBlue);
 	delete (penGreen);
+	delete (penGreen2);
 	delete (penRed);
 	delete (penWhite);
 	delete (penBlack);
+	delete (penYellow2);
 	delete (brushBlue);
 	delete (brushGreen);
+	delete (brushGreen2);
 	delete (brushRed);
 	delete (brushWhite);
 	delete (brushBlack);
+	delete (brushYellow2);
 	CurrentMFD = 0;
 }
 
@@ -560,6 +568,62 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				iy += (chw3 + th);
 				WriteText(skp, cp1_x + chw3, iy, kw, "ZDST", convertAltString(fs.navTargetRelPos.z));
 				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "ZVEL", convertAltString(fs.navTargetRelVel.z));
+
+				// Indicators
+				if (fs.docked) {
+					skp->SetBrush(brushRed);
+					skp->SetPen(penRed);
+					skp->SetTextColor(WHITE);
+					int tw = skp->GetTextWidth("DOCKED", 6);
+					int offset = (int)((cp1_x - x - tw) / 2);
+					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
+					skp->TextBox(x + offset, y + height - th, cp1_x - offset, y + height, "DOCKED", 6);
+					offset = (int)((x + width - cp2_x - tw) / 2);
+					skp->Rectangle(cp2_x + offset, y + height - th, x + width - offset, y + height);
+					skp->TextBox(cp2_x + offset, y + height - th, x + width - offset, y + height, "DOCKED", 6);
+				}
+
+				skp->SetBrush(brushGreen2);
+				skp->SetPen(penGreen2);
+				int y1 = y + (int)(th / 2);
+				int y2 = y + height - (int)(1.5*th);
+				int h = y2 - y1;
+				int x1 = x + (int)((cp1_x - x) / 3);
+				int x2 = cp1_x - (int)((cp1_x - x) / 3);
+				int w = x2 - x1;
+				double ld = min(1000, log10(length(fs.navTargetRelPos)));
+				ld += 1;
+				if (ld < 0) ld = 0;
+				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
+				skp->SetBrush(NULL);
+				skp->SetPen(penWhite);
+				skp->Rectangle(x1, y1, x2, y2);
+				for (int i = 1; i < 4; i++) {
+					skp->Line(x1, y1 + i * (int)(h / 4), x2, y1 + i * (int)(h / 4));
+				}
+
+				if (fs.navTargetRelVel.x < 0) {
+					skp->SetBrush(brushYellow2);
+					skp->SetPen(penYellow2);
+				} else {
+					skp->SetBrush(brushGreen2);
+					skp->SetPen(penGreen2);
+				}
+				x1 = cp2_x + (int)((x + width - cp2_x) / 3);
+				x2 = x + width - (int)((x + width - cp2_x) / 3);
+				w = x2 - x1;
+				ld = min(1000, log10(length(fs.navTargetRelVel)));
+				ld += 1;
+				if (ld < 0) ld = 0;
+				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
+				skp->SetBrush(NULL);
+				skp->SetPen(penWhite);
+				skp->Rectangle(x1, y1, x2, y2);
+				for (int i = 1; i < 4; i++) {
+					skp->Line(x1, y1 + i * (int)(h / 4), x2, y1 + i * (int)(h / 4));
+				}
+
+
 			}
 		}
 	}

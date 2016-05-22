@@ -4,6 +4,7 @@
 #include "attref.h"
 
 typedef struct {
+	bool docked;
 	double altitude;
 	double pitchrate;
 	double yawrate;

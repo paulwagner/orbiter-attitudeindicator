@@ -12,10 +12,10 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	if (GetMode() == 0) frm = FRAME_ECL;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
+	fs.docked = (v->DockingStatus(0) == 1);
 	// Target-relative Parameters
 	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
 	NAVDATA ndata;
-	//fs.navTarget = 0;
 	fs.hasNavTarget = false;
 	fs.navType = TRANSMITTER_NONE;
 	if (navhandle) {
@@ -24,12 +24,35 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 		if (ndata.type == TRANSMITTER_VOR) {
 			fs.hasNavTarget = true;
 		}
+		else if (ndata.type == TRANSMITTER_IDS) {
+			OBJHANDLE tgtv = ndata.ids.hVessel;
+			VESSEL* tgt = oapiGetVesselInterface(tgtv);
+			VECTOR3 tDpos, tDdir, tDrot;
+			tgt->GetDockParams(ndata.ids.hDock, tDpos, tDdir, tDrot);
+			tgt->GlobalRot(tDpos, tDpos);
+			VECTOR3 tgtpos;
+			oapiGetGlobalPos(tgtv, &tgtpos);
+			VECTOR3 vDpos, vDdir, vDrot;
+			// TODO: how to get correct docking handle of current vessel?
+			DOCKHANDLE vDh = v->GetDockHandle(0);
+			if (vDh != 0) {
+				v->GetDockParams(vDh, vDpos, vDdir, vDrot);
+				v->GlobalRot(vDpos, vDpos);
+				VECTOR3 vPos;
+				v->GetGlobalPos(vPos);
+				fs.navTargetRelPos = (tgtpos + tDpos) - (vPos + vDpos);
+			} else {
+				fs.navTargetRelPos = _V(0, 0, 0);
+			}
+
+			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
+			fs.hasNavTarget = true;
+		}
 		else if (ndata.type != TRANSMITTER_NONE) {
-			//fs.navTarget = ndata.xpdr.hVessel; // Union, also gets hBase in case of VTOL and ILS
 			OBJHANDLE tgtv = ndata.xpdr.hVessel; // Union, also gets hBase in case of VTOL and ILS
 			fs.hasNavTarget = true;
-			v->GetRelativePos(tgtv, fs.navTargetRelPos);
 			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
+			v->GetRelativePos(tgtv, fs.navTargetRelPos);
 		}
 
 	}
