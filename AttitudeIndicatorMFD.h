@@ -18,8 +18,8 @@ const std::string frmStrings[5] = { "ECL", "EQU", "OV/OM", "LH/LN", "NAV" };
 // 0=normal, 2=big
 const int modeCount = 2;
 
-// 0=GS, 1=OS, 2=TAS, 3=IAS
-const int speedCount = 4;
+// 0=GS, 1=TAS, 2=IAS
+const int speedCount = 3;
 
 class AttitudeIndicatorMFD: public MFD2 {
 public:

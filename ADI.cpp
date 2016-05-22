@@ -358,13 +358,13 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		attref->GetOrbitalSpeedDirection(pgd, nml, rad, pep); // Orbital relative vector in OV/OM
 	else if (frm == 3)
 		attref->GetAirspeedDirection(pgd, nml, rad, pep); // Surface relative vector in LH/LN
-	else if (frm == 4 && fs.navTarget != 0)
+	else if (frm == 4 && fs.hasNavTarget)
 		attref->GetTargetDirections(tgt, pgd); // Target relative vector in NAV
 	else
 		return; // No markers in ECL and EQU
 
 	// Prograde
-	if (drawPrograde && (frm != 4 || fs.navTarget != 0) && isnormal(length(pgd))) {
+	if (drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
 		double d = sin(45 * RAD);
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
@@ -403,7 +403,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Target marker
-	if (frm == 4 && fs.navTarget != 0){
+	if (frm == 4 && fs.hasNavTarget){
 		int tx = (int)(cw / 2);
 		int ty = (int)(ch / 2);
 		double d = sin(45 * RAD);

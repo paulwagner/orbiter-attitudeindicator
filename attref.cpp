@@ -139,6 +139,14 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 					axis3 = -mul(R,dir);
 					axis2 = mul(R,rot);
 					} break;
+				case TRANSMITTER_XPDR: {
+					MATRIX3 R;
+					VESSEL *vtgt = oapiGetVesselInterface(ndata.ids.hVessel);
+					vtgt->GetRotationMatrix(R);
+					axis3 = _V(R.m13, R.m23, R.m33);
+					axis2 = _V(R.m12, R.m22, R.m32);
+				} break;
+				case TRANSMITTER_ILS:
 				case TRANSMITTER_VTOL:
 				case TRANSMITTER_VOR: {
 					OBJHANDLE hRef = v->GetSurfaceRef();

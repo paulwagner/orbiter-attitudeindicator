@@ -23,12 +23,14 @@ typedef struct {
 	double lat;
 	double lon;
 	double r;
-	VESSEL* navTarget;
+	//OBJHANDLE navTarget;
+	bool hasNavTarget;
 	VECTOR3 navTargetRelPos;
 	VECTOR3 navTargetRelVel;
-	double navTargetInc;
-	double navTargetAp;
-	double navTargetPe;
+	//double navTargetInc;
+	//double navTargetAp;
+	//double navTargetPe;
+	DWORD navType;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {
@@ -41,7 +43,7 @@ public:
   bool GetReferenceName(char *string, int n);
 
 private:
-	mutable FLIGHTSTATUS fs;
+	FLIGHTSTATUS fs;
 	void CalculateDirection(VECTOR3 euler, VECTOR3 &dir);
 
 };

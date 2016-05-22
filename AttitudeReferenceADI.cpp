@@ -1,34 +1,37 @@
 #include "AttitudeReferenceADI.h"
+#include <string>
 
 FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	const VESSEL *v = GetVessel();
-	// Body-independent parameters
 	VECTOR3 vec;
-	OBJHANDLE body;
 	ELEMENTS elem;
 	ORBITPARAM orbitparam;
+	OBJHANDLE body;
+	// Body-independent parameters
 	int frm = FRAME_EQU;
 	if (GetMode() == 0) frm = FRAME_ECL;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
 	// Target-relative Parameters
 	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
-	fs.navTarget = 0;
+	NAVDATA ndata;
+	//fs.navTarget = 0;
+	fs.hasNavTarget = false;
+	fs.navType = TRANSMITTER_NONE;
 	if (navhandle) {
-		NAVDATA ndata;
 		oapiGetNavData(navhandle, &ndata);
-		if (ndata.type == TRANSMITTER_IDS) {
-			fs.navTarget = oapiGetVesselInterface(ndata.ids.hVessel);
-			v->GetRelativePos(ndata.ids.hVessel, fs.navTargetRelPos);
-			v->GetRelativeVel(ndata.ids.hVessel, fs.navTargetRelVel);
-			body = fs.navTarget->GetApDist(fs.navTargetAp);
-			fs.navTarget->GetPeDist(fs.navTargetPe);
-			double body_rad = oapiGetSize(body);
-			fs.navTargetAp -= body_rad;
-			fs.navTargetPe -= body_rad;
-			fs.navTarget->GetElements(body, elem, &orbitparam, 0, frm);
-			fs.navTargetInc = elem.i;
+		fs.navType = ndata.type;
+		if (ndata.type == TRANSMITTER_VOR) {
+			fs.hasNavTarget = true;
 		}
+		else if (ndata.type != TRANSMITTER_NONE) {
+			//fs.navTarget = ndata.xpdr.hVessel; // Union, also gets hBase in case of VTOL and ILS
+			OBJHANDLE tgtv = ndata.xpdr.hVessel; // Union, also gets hBase in case of VTOL and ILS
+			fs.hasNavTarget = true;
+			v->GetRelativePos(tgtv, fs.navTargetRelPos);
+			v->GetRelativeVel(tgtv, fs.navTargetRelVel);
+		}
+
 	}
 	// Surface-relative parameters
 	body = v->GetEquPos(fs.lon, fs.lat, fs.r);
@@ -40,33 +43,48 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	v->GetRelativeVel(body, vec);
 	fs.gs = dist(plnt_v,  vec);
 
-	double mach = v->GetMachNumber();
-	const ATMCONST *ac = oapiGetPlanetAtmConstants(body);
-	ATMPARAM ap;
-	oapiGetAtm(v->GetHandle(), &ap);
-	double gamma = ac->gamma; // Ratio of specific heats
+	//double mach = v->GetMachNumber();
+	//ATMPARAM ap;
+	//oapiGetAtm(v->GetHandle(), &ap);
+	//double gamma = ac->gamma; // Ratio of specific heats
 	double p1 = v->GetAtmPressure(); // Freestream pressure
-	double ps = ac->p0; // Standard sea level pressure
-	double ds = ac->rho0;
-	double as = sqrt(gamma * ps / ac->rho0); // Sea level speed of sound
+	double d1 = v->GetAtmDensity(); // Freestream density
+	//double ps = ac->p0; // Standard sea level pressure
+	//double ds = ac->rho0; // Standard sea level density
 
-	double gamma_1 = gamma - 1;
-	double gamma_r = gamma_1 / gamma;
-	double k = 2. / gamma_1;
+	fs.ias = 0; fs.tas = 0;
+	if (p1 > 10e-4) {
+		fs.tas = v->GetAirspeed();
+		const ATMCONST *ac = oapiGetPlanetAtmConstants(body);
+		if (ac != 0 && ac->rho0 != 0 && d1 != 0) {
+			fs.ias = fs.tas / (ac->rho0 / d1); // Approximation
+		}
+	}
+	//if (p1 != 0 && ps != 0 && ds != 0 && gamma > 1) {
+		//double as = sqrt(gamma * ps / ds); // Sea level speed of sound
+		//double gamma_1 = gamma - 1;
+		//double gamma_r = gamma_1 / gamma;
+		//double k = 2. / gamma_1;
 
-	// TAS
-	double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
-	//fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
-	fs.tas = v->GetAirspeed();
+		// TAS
+		//double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
+		//fs.tas = v->GetAirspeed();
 
-	// IAS
-	fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));
-	//fs.ias = fs.tas / (ds / v->GetAtmDensity());
-	//fs.ias = fs.tas / (59.05 * (1 + 0.00002*3.28084*v->GetAltitude()));
+		//if (p1 / p0 > 1)
+			//fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
+		//fs.tas = v->GetAirspeed();
+
+		// IAS
+		//fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));
+		//fs.ias = fs.tas / (ds / v->GetAtmDensity());
+		//fs.ias = fs.tas / (59.05 * (1 + 0.00002*3.28084*v->GetAltitude()));
+	//}
+	//return fs;
 
 	// Body-relative parameters
 	body = GetVessel()->GetGravityRef();
-	if (GetMode() == 3)
+	if (GetMode() == 3 || 
+		(GetMode() == 4 && navhandle != 0 && (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL)))
 		body = GetVessel()->GetSurfaceRef();
 	double body_rad = oapiGetSize(body);
 	v->GetElements(body, elem, &orbitparam, 0, frm);
@@ -136,6 +154,7 @@ void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
 bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {
 	OBJHANDLE handle = 0;
 	switch (GetMode()) {
+	case 0:
 	case 1:
 	case 2: {
 		handle = GetVessel()->GetGravityRef();
@@ -153,16 +172,28 @@ bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {
 		if (navhandle) {
 			oapiGetNavData(navhandle, &ndata);
 			switch (ndata.type) {
-			case TRANSMITTER_IDS: {
-				VESSEL *vtgt = oapiGetVesselInterface(ndata.ids.hVessel);
-				strncpy(string, vtgt->GetName(), n);
+			case TRANSMITTER_ILS: {
+				std::string s = "ILS Rwy ";
+				int r = (int)(ndata.ils.appdir*DEG/10);
+				if (r < 10) s.append("0");
+				s.append(std::to_string(r));
+				strncpy(string, s.c_str(), n);
 			}	return true;
-			case TRANSMITTER_VTOL:
-			case TRANSMITTER_VOR: {
-				handle = GetVessel()->GetSurfaceRef();
-				oapiGetObjectName(handle, string, n);
+			case TRANSMITTER_VTOL: {
+				std::string s = "VTOL Pad-";
+				int p = ndata.vtol.npad + 1;
+				if (p < 10) s.append("0");
+				s.append(std::to_string(p));
+				strncpy(string, s.c_str(), n);
+			} return true;
+			default: {
+				oapiGetNavDescr(navhandle, string, n);
 			} return true;
 			}
+		}
+		else {
+			strncpy(string, "[no signal]", n);
+			return true;
 		}
 	}
 	}
