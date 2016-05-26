@@ -8,7 +8,7 @@
 #include <sstream>
 #include "Configuration.h"
 
-#define SRFNAVTYPE(x) (x == TRANSMITTER_NONE ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
+#define SRFNAVTYPE(x, v) ((x == TRANSMITTER_NONE && v->GetAtmRef() != 0) ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
 
 // ==============================================================
 // Global variables
@@ -141,13 +141,15 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 {
 	// The labels for the buttons used by our MFD mode
 	static char *label[12] = { "FRM", "MOD", "TRI", "", "Z+", "Z-", "PGD", "NML", "PER", "RAD", "SPD", "NAV" };
+	const VESSEL* v = attref->GetVessel();
+	DWORD navType = attref->GetFlightStatus().navType;
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
-	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 8)) return "OB+";
-	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 9)) return "OB-";
-	if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS && (bt == 10)) return "REF";
+	if (frm == 4 && SRFNAVTYPE(navType, v) && (bt == 8)) return "OB+";
+	if (frm == 4 && SRFNAVTYPE(navType, v) && (bt == 9)) return "OB-";
+	if (frm == 4 && navType == TRANSMITTER_IDS && (bt == 10)) return "REF";
 	if (frm == 4 && (bt >= 7 && bt < 10)) return ""; // Only prograde/retrograde in NAV
-	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt >= 6 && bt < 10)) return ""; // No markers in surface NAV mode
-	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return ""; // SPD only in surface text mode
+	if (frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return ""; // No markers in surface NAV mode, or if no signal is tuned
+	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(navType, v)))) && (bt == 10)) return ""; // SPD only in surface text mode
 	if (frm != 4 && (bt == 11)) return ""; // NAV only in NAV mode
 	return (bt < 12 ? label[bt] : 0);
 }
@@ -178,8 +180,10 @@ static int ctr = 0;
 bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 {
 	static const DWORD btkey[12] = { OAPI_KEY_F, OAPI_KEY_M, OAPI_KEY_T, 0, OAPI_KEY_I, OAPI_KEY_O, OAPI_KEY_P, OAPI_KEY_N, OAPI_KEY_D, OAPI_KEY_R, OAPI_KEY_S, OAPI_KEY_C };
+	const VESSEL* v = attref->GetVessel();
+	DWORD navType = attref->GetFlightStatus().navType;
 	if (event & PANEL_MOUSE_LBPRESSED) {
-		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 8 || bt == 9)){
+		if (frm == 4 && SRFNAVTYPE(navType,v) && (bt == 8 || bt == 9)){
 			if (ctr < 5) { ctr++; return true; }
 			ctr = 0;
 			return ConsumeKeyBuffered(btkey[bt]);
@@ -189,9 +193,9 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
 	if (frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
-	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
+	if (frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
 	if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS mode
-	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return 0; // SPD only in surface text mode
+	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(navType,v)))) && (bt == 10)) return 0; // SPD only in surface text mode
 	if (frm != 4 && (bt == 11)) return 0; // NAV only in NAV mode
 	if (bt < 12) return ConsumeKeyBuffered(btkey[bt]);
 	else return false;
@@ -215,7 +219,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		adi->ToggleNormal();
 		return true;
 	case OAPI_KEY_R:
-		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)) {
+		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType, attref->GetVessel())) {
 			// Button OB- in NAV mode
 			crs = attref->GetFlightStatus().navCrs[attref->GetNavid()];
 			crs -= RAD;
@@ -226,7 +230,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		adi->ToggleRadial();
 		return true;
 	case OAPI_KEY_D:
-		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)) {
+		if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType, attref->GetVessel())) {
 			// Button OB+ in NAV mode
 			crs = attref->GetFlightStatus().navCrs[attref->GetNavid()];
 			crs += RAD;
@@ -360,7 +364,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 	int scale = GetScale((int)round(2500 / (double)(y + height - cp1_y)));
 	int cur_width = skp->GetTextWidth("00000", 5);
-	if (frm != 4 || SRFNAVTYPE(fs.navType)) {
+	if (frm != 4 || SRFNAVTYPE(fs.navType, attref->GetVessel())) {
 		// Draw velocity
 		skp->SetPen(penBlue);
 		skp->SetBrush(brushBlue);
@@ -368,7 +372,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->Rectangle(cp1_x, cp1_y, x, y + height);
 		double airspeed = 0;
 		std::string spd;
-		if (frm == 3 || (frm == 4 && SRFNAVTYPE(fs.navType))) {
+		if (frm == 3 || (frm == 4 && SRFNAVTYPE(fs.navType, attref->GetVessel()))) {
 			switch (speedMode) {
 			case 0:
 				airspeed = fs.gs; spd = "GS m/s"; break;
@@ -380,6 +384,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		} else {
 			airspeed = fs.os; spd = "OS m/s";
 		}
+		int spd_off = (int)(airspeed / (100 * 1000));  // in 100k m/s
 		int rspd = (int)(round(airspeed * 10 / (double)scale) * (double)scale);
 		int mid_y = cp1_y + (y + height - cp1_y) / 2;
 		for (int k = 0; k < 2; k++) {
@@ -394,7 +399,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetTextColor(WHITE);
 				if (a % 1000 == 0) {
 					skp->Line(cp1_x, ty, cp1_x - chw, ty);
-					s = std::to_string((int)(a / 10));
+					s = std::to_string((int)(a / 10) - spd_off * (100 * 1000));
 					int n = 5 - s.length();
 					if (n < 0) n = 0;
 					s.insert(0, n, '0');
@@ -421,18 +426,19 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			} while (!stop);
 		}
 		// Draw current speed
-		if (airspeed < 10) {
-			s = std::to_string(round((double)airspeed * (double)100) / (double)100);
+		double s_airspeed = airspeed - (spd_off * 100 * 1000);
+		if (s_airspeed < 10) {
+			s = std::to_string(round((double)s_airspeed * (double)100) / (double)100);
 			std::string::size_type n = s.find('.');
 			s = s.substr(0, n + 3);
 		}
-		else if (airspeed < 100) {
-			s = std::to_string(round((double)airspeed * (double)10) / (double)10);
+		else if (s_airspeed < 100) {
+			s = std::to_string(round((double)s_airspeed * (double)10) / (double)10);
 			std::string::size_type n = s.find('.');
 			s = s.substr(0, n + 2);
 		}
 		else {
-			s = std::to_string((int)round(airspeed));
+			s = std::to_string((int)round(s_airspeed));
 		}
 		skp->SetPen(penGreen);
 		skp->Line(cp1_x, mid_y, cp1_x - (int)(1.25*chw), mid_y);
@@ -475,7 +481,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetTextColor(WHITE);
 				if (a % 1000 == 0) {
 					skp->Line(cp2_x, ty, cp2_x + chw, ty);
-					s = std::to_string((a / 1000) - (INT64)alt_off * (100 * 1000));
+					s = std::to_string((a / 1000) - (INT64)(alt_off * (100 * 1000)));
 					int n = 5 - s.length();
 					if (n < 0) n = 0;
 					s.insert(0, n, '0');
@@ -569,6 +575,14 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			tw = skp->GetTextWidth(s.c_str(), s.length());
 			skp->Text(x + width - tw, y + height - th, s.c_str(), s.length());
 		}
+		if (spd_off > 0) {
+			s = "+";
+			s.append(std::to_string((double)spd_off / 10));
+			s = s.substr(0, s.find(".") + 2);
+			s.append(" Mm/s");
+			tw = skp->GetTextWidth(s.c_str(), s.length());
+			skp->Text(cp1_x - tw, y + height - th, s.c_str(), s.length());
+		}
 
 		// Draw text strings
 		skp->SetFont(fsmall);
@@ -601,16 +615,16 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	int th = skp->GetCharSize() & 0xFFFF;
 	int iy = cp1_y + chw3;
 	if (frm == 4) {
-		if (SRFNAVTYPE(fs.navType)) {
+		if (SRFNAVTYPE(fs.navType, attref->GetVessel())) {
 			// Row 1
-			std::string s = std::to_string((int)round(fs.pitch*DEG));
-			s.append("°");
-			WriteText(skp, cp1_x + chw3, iy, kw, "PTCH", s);
-			s = std::to_string((int)round(abs(fs.bank*DEG)));
-			s.append("°");
-			if (fs.bank < 0) s.append("R"); else s.append("L");
-			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BNK", s);
-			
+			char buf[5];
+			sprintf(buf, "%+03d°", (int)round(fs.pitch*DEG));
+			WriteText(skp, cp1_x + chw3, iy, kw, "PTCH", buf);
+			sprintf(buf, "%03d°", (int)round((abs(fs.bank*DEG))));
+			buf[4] = (fs.bank < 0) ? 'R' : 'L';
+			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BNK", buf);
+			iy += (chw3 + th);
+
 			// Row 2
 			iy += (chw3 + th);
 			WriteText(skp, cp1_x + chw3, iy, kw, "CRS", convertAngleString(fs.navCrs[attref->GetNavid()]));
@@ -732,6 +746,18 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		}
 	}
 	else {
+
+		// Row 0
+		if (frm == 3) {
+			char buf[5];
+			sprintf(buf, "%+03d°", (int)round(fs.pitch*DEG));
+			WriteText(skp, cp1_x + chw3, iy, kw, "PTCH", buf);
+			sprintf(buf, "%03d°", (int)round((abs(fs.bank*DEG))));
+			buf[4] = (fs.bank < 0) ? 'R' : 'L';
+			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BNK", buf);
+			iy += (chw3 + th);
+		}
+
 		// Row 1
 		WriteText(skp, cp1_x + chw3, iy, kw, "ApA", convertAltString(fs.apoapsis));
 		WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "PeA", convertAltString(fs.periapsis));
@@ -743,23 +769,24 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 		// Row 3
 		iy += (chw3 + th);
-		s = std::to_string(round(fs.ecc * (double)10000) / (double)10000).substr(0, 6);
+		double ecc = fs.ecc;
+		int exp = (int)log10(ecc);
+		if (exp <= 3) {
+			double sc = pow(10, 4 - max(0,exp));
+			ecc = round(ecc * sc) / sc;
+			s = std::to_string(ecc).substr(0, 6);
+		}
+		else {
+			ecc /= pow(10, exp);
+			ecc = round(ecc * (double)100) / (double)100;
+			s = std::to_string(ecc).substr(0, 4).append("e").append(std::to_string(exp));
+		}
 		WriteText(skp, cp1_x + chw3, iy, kw, "Ecc", s);
 		WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "Inc", convertAngleString(fs.inc));
 
 		// Row 4
 		iy += (chw3 + th);
-		if (frm == 3) {
-			double ang = fs.lon;
-			s = convertAngleString(abs(ang));
-			if (ang < 0) s.append("W"); else s.append("E");
-			WriteText(skp, cp1_x + chw3, iy, kw, "Lon", s);
-			ang = fs.lat;
-			s = convertAngleString(abs(ang));
-			if (ang < 0) s.append("S"); else s.append("N");
-			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "Lat", s);
-		}
-		else {
+		if (frm != 3) {
 			WriteText(skp, cp1_x + chw3, iy, kw, "LAN", convertAngleString(fs.lan));
 			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "T", convertAltString(fs.t));
 		}
@@ -786,6 +813,7 @@ std::string AttitudeIndicatorMFD::convertAngleString(double angle) {
 }
 
 std::string AttitudeIndicatorMFD::convertAltString(double altitude) {
+	if (altitude != 0 && !isnormal(altitude)) return "N/A";
 	std::string s_suff = "";
 	if (abs(altitude) > 1000) {
 		s_suff = "k";

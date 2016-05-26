@@ -124,6 +124,9 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	fs.apoT = orbitparam.ApT;
 	fs.periT = orbitparam.PeT;
 	fs.t = orbitparam.T;
+	if (elem.a < 0) {
+		fs.t = fs.apoT = fs.apoapsis = NAN;
+	}
 	fs.lan = elem.theta;
 	fs.ecc = elem.e;
 	fs.inc = elem.i;

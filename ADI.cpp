@@ -245,8 +245,8 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->SetPen(penWing);
 	int tx = (int)(cw / 2);
 	int ty = (int)(ch / 2);
-	int w2 = width / 2;
-	int h2 = height / 2;
+	int w2 = x + (width / 2);
+	int h2 = y + (height / 2);
 	if (attref->IsDockRef() && attref->GetMode() == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
 		skp->SetBrush(NULL);
 		skp->Ellipse(w2 - tx, h2 - ty, w2 + tx, h2 + ty);
@@ -459,7 +459,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 	
 		// Draw course marker
-		if (fs.navType == TRANSMITTER_ILS || fs.navType == TRANSMITTER_NONE || fs.navType == TRANSMITTER_VOR) {
+		if (fs.navType == TRANSMITTER_ILS || (fs.navType == TRANSMITTER_NONE && attref->GetVessel()->GetAtmRef() != 0) || fs.navType == TRANSMITTER_VOR) {
 			int tx = (int)(cw);
 			int ty = (int)(ch);
 			double crs = fs.navCrs[attref->GetNavid()];
