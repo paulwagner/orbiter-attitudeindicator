@@ -144,6 +144,7 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
 	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 8)) return "OB+";
 	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt == 9)) return "OB-";
+	if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS && (bt == 10)) return "REF";
 	if (frm == 4 && (bt >= 7 && bt < 10)) return ""; // Only prograde/retrograde in NAV
 	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt >= 6 && bt < 10)) return ""; // No markers in surface NAV mode
 	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return ""; // SPD only in surface text mode
@@ -189,6 +190,7 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
 	if (frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
 	if (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
+	if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS mode
 	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType)))) && (bt == 10)) return 0; // SPD only in surface text mode
 	if (frm != 4 && (bt == 11)) return 0; // NAV only in NAV mode
 	if (bt < 12) return ConsumeKeyBuffered(btkey[bt]);
@@ -250,6 +252,10 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		InvalidateButtons();
 		return true;
 	case OAPI_KEY_S:
+		if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
+			attref->ToggleDockRef();
+			return true;
+		}
 		speedMode = (speedMode + 1) % speedCount;
 		return true;
 	case OAPI_KEY_C:
@@ -278,22 +284,41 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 	if (mode == 0)
 		DrawDataField(skp, 1, (H * 2 / 3) + 1, W - 2, (H / 3) - 2);
 	else {
+		int th = skp->GetCharSize() & 0xFFFF;
+		int chw2 = (int)(chw / 2);
+		int chw3 = (int)(chw / 3);
 		skp->SetTextColor(WHITE);
 		skp->SetBrush(brushBlack);
-		int th = skp->GetCharSize() & 0xFFFF;
+		skp->SetPen(penBlack);
+
 		std::string frmS = frmStrings[frm];
+
 		if (frm == 4) frmS.append(std::to_string(attref->GetNavid() + 1));
 		int slen = frmS.length();
 		int swidth = skp->GetTextWidth(frmS.c_str(), slen);
-		skp->Rectangle(10, 5, 10 + swidth, 5 + th);
-		skp->TextBox(10, 5, 10 + swidth, 5 + th, frmS.c_str(), slen);
+		skp->Rectangle(chw2, chw3, chw2 + swidth, chw3 + th);
+		skp->TextBox(chw2, chw3, chw2 + swidth, chw3 + th, frmS.c_str(), slen);
 		char buf[50];
 		if (attref->GetReferenceName(buf, 50)) {
 			slen = strlen(buf);
 			swidth = skp->GetTextWidth(buf, slen);
-			skp->Rectangle(W - swidth - 10, 5, W - 10, 5 + th);
-			skp->TextBox(W - swidth - 10, 5, W - 10, 5 + th, buf, slen);
+			skp->Rectangle(W - swidth - chw2, chw3, W - chw2, chw3 + th);
+			skp->TextBox(W - swidth - chw2, chw3, W - chw2, chw3 + th, buf, slen);
 		}
+
+		if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
+			skp->SetTextColor(BLACK);
+			skp->SetPen(penYellow2);
+			skp->SetBrush(brushYellow2);
+			char* str = "DOCKPORT";
+			if (!attref->IsDockRef())
+				str = "VESSEL";
+			int slen = strlen(str);
+			int swidth = skp->GetTextWidth(str, slen);
+			skp->Rectangle(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th);
+			skp->TextBox(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th, str, slen);
+		}
+
 	}
 	return true;
 }
@@ -600,7 +625,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		}
 
 		if (fs.hasNavTarget) {
-			if (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR){
+			if (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR) {
 				double dp = dotp(fs.navTargetRelVel, fs.navTargetRelPos);
 				double cvel = dp / length(fs.navTargetRelPos);
 
@@ -624,6 +649,19 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "zVEL", convertAltString(fs.navTargetRelVel.z));
 
 				// Indicators
+				if (fs.navType == TRANSMITTER_IDS) {
+					skp->SetTextColor(BLACK);
+					skp->SetPen(penYellow2);
+					skp->SetBrush(brushYellow2);
+					char* str = "DOCKPORT";
+					if (!attref->IsDockRef())
+						str = "VESSEL";
+					int slen = strlen(str);
+					int swidth2 = (skp->GetTextWidth(str, slen) / 2);
+					int mid = (int)(width / 2);
+					skp->Rectangle(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height);
+					skp->TextBox(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height, str, slen);
+				}
 				skp->SetTextColor(WHITE);
 				if (fs.docked) {
 					skp->SetBrush(brushRed);

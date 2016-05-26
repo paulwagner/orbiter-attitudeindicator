@@ -243,13 +243,27 @@ void ADI::GetOpenGLRotMatrix(double* m) {
 
 void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->SetPen(penWing);
+	int tx = (int)(cw / 2);
+	int ty = (int)(ch / 2);
+	int w2 = width / 2;
+	int h2 = height / 2;
+	if (attref->IsDockRef() && attref->GetMode() == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
+		skp->SetBrush(NULL);
+		skp->Ellipse(w2 - tx, h2 - ty, w2 + tx, h2 + ty);
+		skp->Ellipse(w2 - 2 * tx, h2 - 2 * ty, w2 + 2 * tx, h2 + 2 * ty);
+		skp->Line(w2 + tx, h2, w2 + 3 * tx, h2);
+		skp->Line(w2 - tx, h2, w2 - 3 * tx, h2);
+		skp->Line(w2, h2 + ty, w2, h2 + 3 * ty);
+		skp->Line(w2, h2 - ty, w2, h2 - 3 * ty);
+		return;
+	}
 	skp->SetBrush(brushWing);
-	skp->MoveTo(width / 2 - (int)(cw * 4), height / 2);
-	skp->LineTo(width / 2 - (int)(cw * 3 / 2), height / 2);
-	skp->LineTo(width / 2, height / 2 + (int)ch);
-	skp->LineTo(width / 2 + (int)(cw * 3 / 2), height / 2);
-	skp->LineTo(width / 2 + (int)(cw * 4), height / 2);
-	skp->Rectangle(width / 2 + 1, height / 2 + 1, width / 2 - 1, height / 2 - 1);
+	skp->MoveTo(w2 - (int)(cw * 4), h2);
+	skp->LineTo(w2 - (int)(cw * 3 / 2), h2);
+	skp->LineTo(w2, h2 + (int)ch);
+	skp->LineTo(w2 + (int)(cw * 3 / 2), h2);
+	skp->LineTo(w2 + (int)(cw * 4), h2);
+	skp->Rectangle(w2 + 1, h2 + 1, w2 - 1, h2 - 1);
 }
 
 void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
@@ -346,7 +360,7 @@ void DrawArc(oapi::Sketchpad* skp, double x, double y, double r, double s, doubl
 void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	VECTOR3 pgd, nml, rad, pep, tgt, dock;
+	VECTOR3 pgd, nml, rad, pep, tgt;
 	int frm = attref->GetMode();
 	double phi;
 	double x, y;
@@ -354,8 +368,6 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	double phiF = 70; // max marker view angle
 
 	// Calculate direction vectors
-	if (frm == 4 && fs.navType == TRANSMITTER_IDS)
-		attref->GetDockingPortDirection(dock);
 	if (frm == 2)
 		attref->GetOrbitalSpeedDirection(pgd, nml, rad, pep); // Orbital relative vector in OV/OM
 	else if (frm == 3)
@@ -407,7 +419,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 
 	if (frm == 4){
 		// Target marker
-		if (fs.hasNavTarget){
+		if (fs.hasNavTarget && isnormal(length(tgt)) && (!fs.docked || !attref->IsDockRef())){
 			int tx = (int)(cw / 2);
 			int ty = (int)(ch / 2);
 			double d = sin(45 * RAD);
@@ -470,18 +482,6 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 				skp->Line(ix - (int)(cw*dx*crsScale), iy + (int)(ch*dy*crsScale), ix, iy - (int)(ch*crsScale));
 				skp->Line(ix, iy - (int)(ch*crsScale), ix + (int)(cw*dx*crsScale), iy + (int)(ch*dy*crsScale));
 
-			}
-		}
-		// Draw docking port
-		if (fs.navType == TRANSMITTER_IDS) {
-			int tx = (int)(cw);
-			int ty = (int)(ch);
-			ProjectVector(dock, x, y, phi);
-			ix = (int)x, iy = (int)y;
-			if (abs(phi) <= phiF) {
-				skp->SetPen(penWing);
-				skp->SetBrush(NULL);
-				skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
 			}
 		}
 

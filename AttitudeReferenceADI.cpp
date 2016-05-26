@@ -171,24 +171,6 @@ bool AttitudeReferenceADI::GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel)
 	return true;
 }
 
-bool AttitudeReferenceADI::GetDockingPortDirection(VECTOR3& dockPort) {
-	DOCKHANDLE vDh = GetVessel()->GetDockHandle(0); // TODO: how to get correct docking handle of current vessel?
-	if (vDh != 0) {
-		MATRIX3 srot;
-		GetVessel()->GetRotationMatrix(srot);
-		dockPort = _V(srot.m13, srot.m23, srot.m33);
-
-		VECTOR3 vDpos, vDdir, vDrot;
-		GetVessel()->GetDockParams(vDh, vDpos, vDdir, vDrot);
-		GetVessel()->GlobalRot(vDpos, vDpos);
-		dockPort += vDpos;
-		dockPort = tmul(GetFrameRotMatrix(), unit(dockPort));
-		normalise(dockPort);
-		return true;
-	}
-	return false;
-}
-
 void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
 	double sint = sin(euler.y), cost = cos(euler.y);
 	double sinp = sin(euler.z), cosp = cos(euler.z);

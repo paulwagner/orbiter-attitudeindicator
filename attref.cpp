@@ -25,6 +25,7 @@ AttitudeReference::AttitudeReference (const VESSEL *vessel)
 	tgt_rvel = _V(0,0,0);
 	tgt_ppos = _V(0,0,0);
 	tgt_ptime = 0;
+	idsDockRef = false;
 }
 
 // ==============================================================
@@ -209,9 +210,26 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 		v->GetRotationMatrix (srot);
 
 		// map ship's local axes into reference frame
-		VECTOR3 shipx = {srot.m11, srot.m21, srot.m31};
-		VECTOR3 shipy = {srot.m12, srot.m22, srot.m32};
-		VECTOR3 shipz = {srot.m13, srot.m23, srot.m33};
+		VECTOR3 shipx = { srot.m11, srot.m21, srot.m31 };
+		VECTOR3 shipy = { srot.m12, srot.m22, srot.m32 };
+		VECTOR3 shipz = { srot.m13, srot.m23, srot.m33 };
+
+		// map ship's docking port axes into reference frame
+		NAVHANDLE navhandle = v->GetNavSource(GetNavid());
+		NAVDATA ndata;
+		if (idsDockRef && navhandle) {
+			oapiGetNavData(navhandle, &ndata);
+			if (navhandle && mode == 4 && ndata.type == TRANSMITTER_IDS) {
+				DOCKHANDLE vDh = v->GetDockHandle(0);
+				VECTOR3 vDpos, vDrot, vDdir;
+				v->GetDockParams(vDh, vDpos, vDdir, vDrot);
+				v->GlobalRot(vDdir, vDdir);
+				v->GlobalRot(vDrot, vDrot);
+				shipz = unit(vDdir);
+				shipy = unit(vDrot);
+				shipx = crossp(shipy, shipz);
+			}
+		}
 		shipx = tmul (Rref, shipx);
 		shipy = tmul (Rref, shipy);
 		shipz = tmul (Rref, shipz);
@@ -254,7 +272,21 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 					if (tgtmode == 2) {
 						oapiGetNavPos (hNav, &dir);
 						v->GetGlobalPos (sdir);
-						dir = tmul (GetFrameRotMatrix(), unit (dir-sdir));
+
+						// Correct docking port poosition in IDS mode
+						NAVDATA ndata;
+						oapiGetNavData(hNav, &ndata);
+						if (idsDockRef && ndata.type == TRANSMITTER_IDS) {
+							DOCKHANDLE vDh = v->GetDockHandle(0);
+							VECTOR3 vDpos, vDrot, vDdir;
+							v->GetDockParams(vDh, vDpos, vDdir, vDrot);
+							GetVessel()->GlobalRot(vDpos, vDpos);
+							sdir += vDpos;
+						}
+						sprintf(oapiDebugString(), "s.x: %f, s.y: %f, s.z: %f", unit(dir - sdir).x, unit(dir - sdir).y, unit(dir - sdir).z);
+
+						dir = tmul(GetFrameRotMatrix(), unit(dir - sdir));
+
 					} else {
 						v->GetGlobalVel (sdir);
 						dir = tmul (GetFrameRotMatrix(), unit (tgt_rvel));
@@ -282,7 +314,7 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 	}
 	valid_tgteuler = true;
 	tgt_euler = tgteuler;
-	return have_tgteuler;;
+	return have_tgteuler;
 }
 
 // ==============================================================

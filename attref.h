@@ -53,12 +53,16 @@ public:
 	inline const VECTOR3 &GetTgtOffset () const { return tgt_offs; }
 	void PostStep (double simt, double simdt, double mjd);
 
+	void inline ToggleDockRef(){ idsDockRef = !idsDockRef; }
+	inline bool IsDockRef() const { return idsDockRef; }
+
 private:
 	const VESSEL *v;
 	int projmode;
 	int mode;
 	int tgtmode;
 	int navid;
+	bool idsDockRef;
 	mutable MATRIX3 R;
 	mutable VECTOR3 euler;
 	mutable VECTOR3 tgteuler;
