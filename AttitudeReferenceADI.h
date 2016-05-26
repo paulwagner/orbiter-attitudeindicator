@@ -40,7 +40,8 @@ class AttitudeReferenceADI : public AttitudeReference {
 public:
   AttitudeReferenceADI(const VESSEL* vessel);
   ~AttitudeReferenceADI();
-  FLIGHTSTATUS &GetFlightStatus();
+  inline FLIGHTSTATUS &GetFlightStatus(){ return fs; };
+  bool PostStep(double simt, double simdt, double mjd);
   bool GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel);

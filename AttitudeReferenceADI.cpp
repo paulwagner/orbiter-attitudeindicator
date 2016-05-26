@@ -6,13 +6,17 @@ AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeRefer
 	fs.navCrs = (double*)malloc(sizeof(double) * fs.navCnt);
 	for (int i = 0; i < fs.navCnt; i++)
 		fs.navCrs[i] = 0;
+	fs.navType = TRANSMITTER_NONE;
+	PostStep(0, 0, 0);
 }
 
 AttitudeReferenceADI::~AttitudeReferenceADI() {
 	if (fs.navCrs) delete fs.navCrs;
 }
 
-FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
+bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
+	AttitudeReference::PostStep(simt, simdt, mjd);
+
 	const VESSEL *v = GetVessel();
 	VECTOR3 vec;
 	ELEMENTS elem;
@@ -31,6 +35,7 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
 	NAVDATA ndata;
 	fs.hasNavTarget = false;
+	DWORD prevNavType = fs.navType;
 	fs.navType = TRANSMITTER_NONE;
 	if (navhandle) {
 		oapiGetNavData(navhandle, &ndata);
@@ -62,6 +67,8 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 				fs.navCrs[GetNavid()] = ndata.ils.appdir;
 		}
 	}
+	bool navTypeChanged = (prevNavType != fs.navType);
+
 	// Surface-relative parameters
 	body = v->GetEquPos(fs.lon, fs.lat, fs.r);
 	VECTOR3 plnt = _V(-sin(fs.lon), 0, cos(fs.lon));
@@ -135,7 +142,7 @@ FLIGHTSTATUS &AttitudeReferenceADI::GetFlightStatus() {
 	v->GetRelativePos(body, vec);
 	fs.altitude = length(vec) - body_rad;
 
-	return fs;
+	return navTypeChanged;
 }
 
 bool AttitudeReferenceADI::GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular) {

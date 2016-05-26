@@ -283,7 +283,6 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 							GetVessel()->GlobalRot(vDpos, vDpos);
 							sdir += vDpos;
 						}
-						sprintf(oapiDebugString(), "s.x: %f, s.y: %f, s.z: %f", unit(dir - sdir).x, unit(dir - sdir).y, unit(dir - sdir).z);
 
 						dir = tmul(GetFrameRotMatrix(), unit(dir - sdir));
 

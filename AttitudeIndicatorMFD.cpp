@@ -274,9 +274,9 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	return false;
 }
 
-
 void AttitudeIndicatorMFD::PostStep(double simt, double simdt, double mjd) {
-	attref->PostStep(simt, simdt, mjd);
+	if (attref->PostStep(simt, simdt, mjd))
+		InvalidateButtons();
 }
 
 // Repaint the MFD
@@ -697,7 +697,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				int x1 = x + (int)((cp1_x - x) / 3);
 				int x2 = cp1_x - (int)((cp1_x - x) / 3);
 				int w = x2 - x1;
-				double ld = min(1000, log10(length(fs.navTargetRelPos)));
+				double ld = min(3, log10(length(fs.navTargetRelPos)));
 				ld += 1;
 				if (ld < 0) ld = 0;
 				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
@@ -718,15 +718,15 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				if (cvel > 0) {
 					skp->SetBrush(brushYellow2);
 					skp->SetPen(penYellow2);
-				}
-				else {
+				} else {
 					skp->SetBrush(brushGreen2);
 					skp->SetPen(penGreen2);
 				}
+
 				x1 = cp2_x + (int)((x + width - cp2_x) / 3);
 				x2 = x + width - (int)((x + width - cp2_x) / 3);
 				w = x2 - x1;
-				ld = min(1000, log10(length(fs.navTargetRelVel)));
+				ld = min(3, log10(length(fs.navTargetRelVel)));
 				ld += 1;
 				if (ld < 0) ld = 0;
 				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
