@@ -50,6 +50,7 @@ private:
 
 	std::string convertAltString(double altitude);
 	std::string convertAngleString(double angle);
+	void DrawIndicators(oapi::Sketchpad* skp, int x1, int x2, int y1, int y2, double v, bool b = true);
 
 };
 

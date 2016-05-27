@@ -28,6 +28,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
 	fs.docked = (v->DockingStatus(0) == 1);
+	fs.ground = v->GroundContact();
 	oapiGetHeading(v->GetHandle(), &fs.heading);
 	oapiGetPitch(v->GetHandle(), &fs.pitch);
 	oapiGetBank(v->GetHandle(), &fs.bank);

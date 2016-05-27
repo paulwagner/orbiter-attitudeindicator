@@ -5,6 +5,7 @@
 
 typedef struct {
 	bool docked;
+	bool ground;
 	double altitude;
 	double pitchrate;
 	double yawrate;

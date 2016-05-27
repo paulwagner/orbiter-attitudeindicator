@@ -125,7 +125,7 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 			axis3 = crossp (axis2,yaxis);
 			} break;
 		case 4: {  // synced to NAV source (type-specific)
-			NAVHANDLE hNav = v->GetNavSource (navid);
+			NAVHANDLE hNav = v->GetNavSource(navid);
 			axis3 = _V(0,0,1);
 			axis2 = _V(0,1,0);
 			if (hNav) {
@@ -158,19 +158,6 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 					VECTOR3 yaxis = unit(crossp(paxis, axis2));      // direction of yaw=+90 pole in global frame
 					axis3 = crossp(axis2, yaxis);
 				} break;
-					/*
-				case TRANSMITTER_VTOL:
-				case TRANSMITTER_VOR: {
-					OBJHANDLE hRef = v->GetSurfaceRef();
-					VECTOR3 spos, npos;
-					v->GetRelativePos (hRef, axis2);
-					v->GetGlobalPos (spos);
-					axis2 = unit (axis2);
-					oapiGetNavPos (hNav, &npos);
-					npos -= spos;
-					axis3 = unit(crossp(crossp(axis2,npos),axis2));
-					} break;
-					*/
 				}
 			}
 			else{
@@ -214,12 +201,12 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 		VECTOR3 shipy = { srot.m12, srot.m22, srot.m32 };
 		VECTOR3 shipz = { srot.m13, srot.m23, srot.m33 };
 
-		// map ship's docking port axes into reference frame
 		NAVHANDLE navhandle = v->GetNavSource(GetNavid());
 		NAVDATA ndata;
-		if (idsDockRef && navhandle) {
+		if (mode == 4 && idsDockRef && navhandle) {
 			oapiGetNavData(navhandle, &ndata);
-			if (navhandle && mode == 4 && ndata.type == TRANSMITTER_IDS) {
+			// map ship's docking port axes into reference frame
+			if (ndata.type == TRANSMITTER_IDS) {
 				DOCKHANDLE vDh = v->GetDockHandle(0);
 				VECTOR3 vDpos, vDrot, vDdir;
 				v->GetDockParams(vDh, vDpos, vDdir, vDrot);
@@ -228,6 +215,13 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 				shipz = unit(vDdir);
 				shipy = unit(vDrot);
 				shipx = crossp(shipy, shipz);
+			}
+			// swap ship's y and z axis
+			if (ndata.type == TRANSMITTER_VTOL) {
+				VECTOR3 tmp;
+				tmp = shipy;
+				shipy = shipz;
+				shipz = -tmp;
 			}
 		}
 		shipx = tmul (Rref, shipx);

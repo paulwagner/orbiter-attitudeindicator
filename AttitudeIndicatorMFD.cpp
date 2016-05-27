@@ -146,7 +146,7 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
 	if (frm == 4 && SRFNAVTYPE(navType, v) && (bt == 8)) return "OB+";
 	if (frm == 4 && SRFNAVTYPE(navType, v) && (bt == 9)) return "OB-";
-	if (frm == 4 && navType == TRANSMITTER_IDS && (bt == 10)) return "REF";
+	if (frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return "REF";
 	if (frm == 4 && (bt >= 7 && bt < 10)) return ""; // Only prograde/retrograde in NAV
 	if (frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return ""; // No markers in surface NAV mode, or if no signal is tuned
 	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(navType, v)))) && (bt == 10)) return ""; // SPD only in surface text mode
@@ -194,7 +194,7 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 	if (frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
 	if (frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
 	if (frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
-	if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS mode
+	if (frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS/VTOL mode
 	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(navType,v)))) && (bt == 10)) return 0; // SPD only in surface text mode
 	if (frm != 4 && (bt == 11)) return 0; // NAV only in NAV mode
 	if (bt < 12) return ConsumeKeyBuffered(btkey[bt]);
@@ -256,7 +256,7 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		InvalidateButtons();
 		return true;
 	case OAPI_KEY_S:
-		if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
+		if (frm == 4 && (attref->GetFlightStatus().navType == TRANSMITTER_IDS || attref->GetFlightStatus().navType == TRANSMITTER_VTOL)) {
 			attref->ToggleDockRef();
 			return true;
 		}
@@ -317,6 +317,18 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 			char* str = "DOCKPORT";
 			if (!attref->IsDockRef())
 				str = "VESSEL";
+			int slen = strlen(str);
+			int swidth = skp->GetTextWidth(str, slen);
+			skp->Rectangle(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th);
+			skp->TextBox(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th, str, slen);
+		}
+		if (frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_VTOL) {
+			skp->SetTextColor(BLACK);
+			skp->SetPen(penYellow2);
+			skp->SetBrush(brushYellow2);
+			char* str = "TOP";
+			if (!attref->IsDockRef())
+				str = "NOSE";
 			int slen = strlen(str);
 			int swidth = skp->GetTextWidth(str, slen);
 			skp->Rectangle(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th);
@@ -606,10 +618,13 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->SetTextColor(WHITE);
 	std::string frmS = frmStrings[frm];
 	if (frm == 4) frmS.append(std::to_string(attref->GetNavid() + 1));
-	skp->TextBox(cp1_x + chw3, y + (int)(chw / 4), cp1_x + (mid_width / 2), cp1_y, frmS.c_str(), frmS.length());
+	skp->TextBox(cp1_x + chw3, y + (int)(chw / 4), cp1_x + (mid_width / 3), cp1_y, frmS.c_str(), frmS.length());
 	char buf[50];
 	if (attref->GetReferenceName(buf, 50)) {
-		skp->TextBox(cp1_x + (mid_width / 2) + chw3, y + (int)(chw / 4), cp2_x - chw3, cp1_y, buf, strlen(buf));
+		int tw = skp->GetTextWidth(buf, strlen(buf)) + chw3;
+		if (tw < mid_width / 2) tw = mid_width / 2;
+		if (tw > mid_width * 2 / 3) tw = mid_width * 2 / 3;
+		skp->TextBox(cp2_x - tw, y + (int)(chw / 4), cp2_x - chw3, cp1_y, buf, strlen(buf));
 	}
 	skp->SetFont(fxsmall);
 	int th = skp->GetCharSize() & 0xFFFF;
@@ -617,13 +632,12 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	if (frm == 4) {
 		if (SRFNAVTYPE(fs.navType, attref->GetVessel())) {
 			// Row 1
-			char buf[5];
+			char buf[6];
 			sprintf(buf, "%+03d°", (int)round(fs.pitch*DEG));
 			WriteText(skp, cp1_x + chw3, iy, kw, "PTCH", buf);
-			sprintf(buf, "%03d°", (int)round((abs(fs.bank*DEG))));
+			sprintf(buf, "%03d°X", (int)round((abs(fs.bank*DEG))));
 			buf[4] = (fs.bank < 0) ? 'R' : 'L';
 			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BNK", buf);
-			iy += (chw3 + th);
 
 			// Row 2
 			iy += (chw3 + th);
@@ -635,7 +649,19 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				// Row 3
 				iy += (chw3 + th);
 				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "DST", convertAltString(length(fs.navTargetRelPos)));
+			} else {
+				iy += (chw3 + th);
 			}
+			// Row 4
+			iy += (chw3 + th);
+			double ang = fs.lon;
+			s = convertAngleString(abs(ang));
+			if (ang < 0) s.append("W"); else s.append("E");
+			WriteText(skp, cp1_x + chw3, iy, kw, "Lon", s);
+			ang = fs.lat;
+			s = convertAngleString(abs(ang));
+			if (ang < 0) s.append("S"); else s.append("N");
+			WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "Lat", s);
 		}
 
 		if (fs.hasNavTarget) {
@@ -693,27 +719,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetPen(penGreen2);
 				int y1 = y + (int)(th / 2);
 				int y2 = y + height - (int)(1.5*th);
-				int h = y2 - y1;
-				int x1 = x + (int)((cp1_x - x) / 3);
-				int x2 = cp1_x - (int)((cp1_x - x) / 3);
-				int w = x2 - x1;
-				double ld = min(3, log10(length(fs.navTargetRelPos)));
-				ld += 1;
-				if (ld < 0) ld = 0;
-				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
-				skp->SetBrush(NULL);
-				skp->SetPen(penWhite);
-				skp->Line(x1, y1, x1, y2);
-				skp->Line(x2, y1, x2, y2);
-				for (int i = 0; i < 5; i++) {
-					int ay = y2 - (int)((i * h) / 4);
-					skp->Line(x1, ay, x2, ay);
-					if (i < 4) {
-						std::string s = std::to_string(i - 1);
-						int tw = skp->GetTextWidth(s.c_str(), s.length());
-						skp->Text(x1 - tw - chw3, ay - (int)(th / 2) - chw3, s.c_str(), s.length());
-					}
-				}
+				DrawIndicators(skp, x + (int)((cp1_x - x) / 3), y1, cp1_x - (int)((cp1_x - x) / 3), y2, length(fs.navTargetRelPos));
 
 				if (cvel > 0) {
 					skp->SetBrush(brushYellow2);
@@ -723,25 +729,83 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					skp->SetPen(penGreen2);
 				}
 
-				x1 = cp2_x + (int)((x + width - cp2_x) / 3);
-				x2 = x + width - (int)((x + width - cp2_x) / 3);
-				w = x2 - x1;
-				ld = min(3, log10(length(fs.navTargetRelVel)));
-				ld += 1;
-				if (ld < 0) ld = 0;
-				skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
-				skp->SetBrush(NULL);
-				skp->SetPen(penWhite);
-				skp->Line(x1, y1, x1, y2);
-				skp->Line(x2, y1, x2, y2);
-				for (int i = 0; i < 5; i++) {
-					int ay = y2 - (int)((i * h) / 4);
-					skp->Line(x1, ay, x2, ay);
-					if (i < 4) {
-						std::string s = std::to_string(i - 1);
-						skp->Text(x2 + chw3, ay - (int)(th / 2) - chw3, s.c_str(), s.length());
-					}
+				DrawIndicators(skp, cp2_x + (int)((x + width - cp2_x) / 3), y1, x + width - (int)((x + width - cp2_x) / 3), y2, length(fs.navTargetRelVel));
+
+			}
+			if (fs.navType == TRANSMITTER_VTOL) {
+				MATRIX3 m;
+				attref->GetVessel()->GetRotationMatrix(m);
+				VECTOR3 relPos = tmul(m, fs.navTargetRelPos);
+				VECTOR3 relVel = tmul(m, fs.navTargetRelVel);
+
+				// Row 1
+				double alt = fs.altitude;
+				double vspd = relVel.y;
+				WriteText(skp, cp1_x + chw3, iy, kw, "ALT", convertAltString(alt));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "VSPD", convertAltString(vspd));
+
+				// Row 2
+				iy += (chw3 + th);
+				relPos.y = 0;
+				relVel.y = 0;
+				WriteText(skp, cp1_x + chw3, iy, kw, "DST", convertAltString(length(relPos)));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "HSPD", convertAltString(length(relVel)));
+
+				// Row 3
+				iy += (chw3 + th);
+				WriteText(skp, cp1_x + chw3, iy, kw, "HDG", convertAngleString(fs.heading));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "DIR", convertAngleString(fs.navBrg - fs.heading));
+
+				// Row 4
+				iy += (chw3 + th);
+				char buf[6];
+				sprintf(buf, "%+03d°", (int)round(fs.pitch*DEG));
+				WriteText(skp, cp1_x + chw3, iy, kw, "PTCH", buf);
+				sprintf(buf, "%03d°X", (int)round((abs(fs.bank*DEG))));
+				buf[4] = (fs.bank < 0) ? 'R' : 'L';
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "BNK", buf);
+
+				// Indicators
+				skp->SetTextColor(BLACK);
+				skp->SetPen(penYellow2);
+				skp->SetBrush(brushYellow2);
+				char* str = "TOP";
+				if (!attref->IsDockRef())
+					str = "NOSE";
+				int slen = strlen(str);
+				int swidth2 = (skp->GetTextWidth(str, slen) / 2);
+				int mid = (int)(width / 2);
+				skp->Rectangle(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height);
+				skp->TextBox(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height, str, slen);
+				skp->SetTextColor(WHITE);
+				if (fs.ground) {
+					skp->SetBrush(brushRed);
+					skp->SetPen(penRed);
+					int tw = skp->GetTextWidth("GROUND", 6);
+					int offset = (int)((cp1_x - x - tw) / 2);
+					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
+					skp->TextBox(x + offset, y + height - th, cp1_x - offset, y + height, "GROUND", 6);
+					offset = (int)((x + width - cp2_x - tw) / 2);
+					skp->Rectangle(cp2_x + offset, y + height - th, x + width - offset, y + height);
+					skp->TextBox(cp2_x + offset, y + height - th, x + width - offset, y + height, "GROUND", 6);
 				}
+
+				skp->SetBrush(brushGreen2);
+				skp->SetPen(penGreen2);
+				int y1 = y + (int)(th / 2);
+				int y2 = y + height - (int)(1.5*th);
+				DrawIndicators(skp, x + (int)((cp1_x - x) / 3), y1, cp1_x - (int)((cp1_x - x) / 3), y2, alt, false);
+
+				if (vspd < 0) {
+					skp->SetBrush(brushYellow2);
+					skp->SetPen(penYellow2);
+				}
+				else {
+					skp->SetBrush(brushGreen2);
+					skp->SetPen(penGreen2);
+				}
+
+				DrawIndicators(skp, cp2_x + (int)((x + width - cp2_x) / 3), y1, x + width - (int)((x + width - cp2_x) / 3), y2, abs(vspd));
 			}
 		}
 	}
@@ -796,6 +860,31 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	oapiReleaseFont(fsmall);
 	oapiReleaseFont(fxsmall);
 	//oapiReleaseFont(fxxsmall);
+}
+
+void AttitudeIndicatorMFD::DrawIndicators(oapi::Sketchpad* skp, int x1, int y1, int x2, int y2, double v, bool b) {
+	int th = skp->GetCharSize() & 0xFFFF;
+	int h = y2 - y1;
+	int w = x2 - x1;
+	int m = 4;
+	if (b) m = 3;
+	double ld = min(m, log10(v));
+	if(b) ld += 1;
+	if (ld < 0) ld = 0;
+	skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
+	skp->SetBrush(NULL);
+	skp->SetPen(penWhite);
+	skp->Line(x1, y1, x1, y2);
+	skp->Line(x2, y1, x2, y2);
+	for (int i = 0; i < 5; i++) {
+		int ay = y2 - (int)((i * h) / 4);
+		skp->Line(x1, ay, x2, ay);
+		if (i < 4) {
+			std::string s = std::to_string(i - (b ? 1 : 0));
+			int tw = skp->GetTextWidth(s.c_str(), s.length());
+			skp->Text(x1 - tw - (int)(chw / 3), ay - (int)(th / 2) - (int)(chw / 3), s.c_str(), s.length());
+		}
+	}
 }
 
 std::string AttitudeIndicatorMFD::convertAngleString(double angle) {
