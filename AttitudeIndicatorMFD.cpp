@@ -158,7 +158,7 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 {
 	// The menu descriptions for the buttons
-	static const MFDBUTTONMENU mnu[12] = {
+	static MFDBUTTONMENU mnu[12] = {
 		{ "Change Frame", 0, 'F' },
 		{ "Change Mode", 0, 'M' },
 		{ "Toggle Rate", "Indicators", 'T' },
@@ -172,6 +172,21 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 		{ "Change Speed", 0, 'S' },
 		{ "Select NAV", "Receiver", 'C' }
 	};
+	mnu[6] = { "Toggle Prograde/", "Retrograde", 'P' };
+	mnu[7] = { "Toggle Normal/", "Antinormal", 'N' };
+	mnu[8] = { "Toggle", "Perpendicular", 'D' };
+	mnu[9] = { "Toggle Radial", 0, 'R' };
+	mnu[10] = { "Change Speed", 0, 'S' };
+	mnu[11] = { "Select NAV", "Receiver", 'C' };
+	const VESSEL* v = attref->GetVessel();
+	DWORD navType = attref->GetFlightStatus().navType;
+	if (frm <= 1) mnu[6] = mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // No markers in ECL and EQU
+	if (frm == 4) mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // Only prograde/retrograde in NAV
+	if (frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE)) mnu[6] = mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // No markers in surface NAV mode, or if no signal is tuned
+	if ((mode == 1 || !(frm == 3 || (frm == 4 && SRFNAVTYPE(navType, v))))) mnu[10] = { 0, 0, 0 }; // SPD only in surface text mode
+	if (frm != 4) mnu[11] = { 0, 0, 0 }; // NAV only in NAV mode
+	if (frm == 4 && SRFNAVTYPE(navType, v)) { mnu[8] = { "Increase OBS", 0, '+' }; mnu[9] = { "Decrease OBS", 0, '-' }; }
+	if (frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL))  mnu[10] = { "Change reference system", 0, 'S' };
 	if (menu) *menu = mnu;
 	return 12; // return the number of buttons used
 }
@@ -610,7 +625,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	// Draw text
 	skp->SetFont(fsmall);
 	int chw3 = (int)(chw / 3);
-	int kw = (int)(2*chw);
+	int kw = (int)(2.5*chw);
 	int mid_width = cp2_x - cp1_x;
 	skp->SetPen(penGreen);
 	skp->Line(cp1_x + chw3, cp1_y, cp2_x - chw3, cp1_y);
