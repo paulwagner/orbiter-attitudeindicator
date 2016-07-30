@@ -27,6 +27,10 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	if (GetMode() == 0) frm = FRAME_ECL;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
+	fs.aoa = v->GetAOA();
+	VECTOR3 hspd;
+	v->GetHorizonAirspeedVector(hspd);
+	fs.vs = hspd.y;
 	fs.docked = (v->DockingStatus(0) == 1);
 	fs.ground = v->GroundContact();
 	oapiGetHeading(v->GetHandle(), &fs.heading);
@@ -79,13 +83,16 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	VECTOR3 plnt_v = mul(m, plnt);
 	v->GetRelativeVel(body, vec);
 	fs.gs = dist(plnt_v,  vec);
+	
+	fs.dns = v->GetAtmDensity();
+	fs.stp = v->GetAtmPressure();
 
 	//double mach = v->GetMachNumber();
 	//ATMPARAM ap;
 	//oapiGetAtm(v->GetHandle(), &ap);
 	//double gamma = ac->gamma; // Ratio of specific heats
-	double p1 = v->GetAtmPressure(); // Freestream pressure
-	double d1 = v->GetAtmDensity(); // Freestream density
+	double p1 = fs.stp; // Freestream pressure
+	double d1 = fs.dns; // Freestream density
 	//double ps = ac->p0; // Standard sea level pressure
 	//double ds = ac->rho0; // Standard sea level density
 
@@ -97,26 +104,27 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 			fs.ias = fs.tas / (ac->rho0 / d1); // Approximation
 		}
 	}
-	//if (p1 != 0 && ps != 0 && ds != 0 && gamma > 1) {
-		//double as = sqrt(gamma * ps / ds); // Sea level speed of sound
-		//double gamma_1 = gamma - 1;
-		//double gamma_r = gamma_1 / gamma;
-		//double k = 2. / gamma_1;
+	/*
+	if (p1 != 0 && ps != 0 && ds != 0 && gamma > 1) {
+		double as = sqrt(gamma * ps / ds); // Sea level speed of sound
+		double gamma_1 = gamma - 1;
+		double gamma_r = gamma_1 / gamma;
+		double k = 2. / gamma_1;
 
 		// TAS
-		//double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
-		//fs.tas = v->GetAirspeed();
+		double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
+		fs.tas = v->GetAirspeed();
 
-		//if (p1 / p0 > 1)
-			//fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
-		//fs.tas = v->GetAirspeed();
+		if (p1 / p0 > 1)
+			fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
+		fs.tas = v->GetAirspeed();
 
 		// IAS
-		//fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));
-		//fs.ias = fs.tas / (ds / v->GetAtmDensity());
-		//fs.ias = fs.tas / (59.05 * (1 + 0.00002*3.28084*v->GetAltitude()));
-	//}
-	//return fs;
+		fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));
+		fs.ias = fs.tas / (ds / v->GetAtmDensity());
+		fs.ias = fs.tas / (59.05 * (1 + 0.00002*3.28084*v->GetAltitude()));
+	}
+	*/
 
 	// Body-relative parameters
 	body = GetVessel()->GetGravityRef();

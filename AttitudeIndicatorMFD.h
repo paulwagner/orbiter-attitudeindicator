@@ -6,6 +6,7 @@
 #define DEFAULT_ZOOM 1.2
 #define DEFAULT_MODE 0
 #define DEFAULT_SPEED 0;
+#define DEFAULT_LHLN_DATA_MODE 0;
 
 class ADI;
 class AttitudeReferenceADI;
@@ -20,6 +21,9 @@ const int modeCount = 2;
 
 // 0=GS, 1=TAS, 2=IAS
 const int speedCount = 3;
+
+// 0=SRF, 1=ORB
+const int lhlnDataCount = 2;
 
 class AttitudeIndicatorMFD: public MFD2 {
 public:
@@ -44,6 +48,7 @@ protected:
 	int frm;
 	int mode;
 	int speedMode;
+	int lhlnDataMode;
 private:
 	oapi::Pen *penBlue, *penGreen, *penGreen2, *penRed, *penWhite, *penBlack, *penYellow2;
 	oapi::Brush *brushBlue, *brushGreen, *brushGreen2, *brushRed, *brushWhite, *brushBlack, *brushYellow2;
@@ -51,6 +56,7 @@ private:
 	std::string convertAltString(double altitude);
 	std::string convertAngleString(double angle);
 	void DrawIndicators(oapi::Sketchpad* skp, int x1, int x2, int y1, int y2, double v, bool b = true);
+	void inline FillPtchBnkString(char ptch[6], char bnk[6]);
 
 };
 

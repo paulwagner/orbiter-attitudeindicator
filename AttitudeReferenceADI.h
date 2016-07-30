@@ -13,10 +13,14 @@ typedef struct {
 	double heading;
 	double pitch;
 	double bank;
+	double aoa;
+	double dns;
+	double stp;
 	double tas;
 	double os;
 	double ias;
 	double gs;
+	double vs;
 	double apoapsis;
 	double periapsis;
 	double apoT;
