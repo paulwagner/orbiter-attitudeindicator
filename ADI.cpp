@@ -3,6 +3,7 @@
 #include <sstream>
 #include "Configuration.h"
 #include "imageloader.h"
+#include "commons.h"
 
 ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config) {
 	this->x = x;
@@ -650,22 +651,4 @@ void ADI::DrawRateIndicators(oapi::Sketchpad* skp) {
 	CheckRange(syaw, -1.0, 1.0);
 	int yawrect = (int)(syaw * (double)width / 4);
 	skp->Rectangle(width / 2, height - border, (width / 2) + yawrect, height - border - rwidth);
-}
-
-template<class T>
-T ADI::CheckRange(T &Var, const T &Min, const T &Max) {
-	T Diff = 0;
-	if (Var < Min) {
-		Diff = Var - Min;
-		Var = Min;
-	} else if (Var > Max) {
-		Diff = Var - Max;
-		Var = Max;
-	}
-	return Diff;
-}
-
-template <typename T>
-int ADI::sgn(T val) {
-	return (T(0) < val) - (val < T(0));
 }

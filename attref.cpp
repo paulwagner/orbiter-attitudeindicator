@@ -9,6 +9,7 @@
 // ==============================================================
 
 #include "attref.h"
+#include "commons.h"
 
 AttitudeReference::AttitudeReference (const VESSEL *vessel)
 {
@@ -228,11 +229,14 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 		shipy = tmul (Rref, shipy);
 		shipz = tmul (Rref, shipz);
 
+
 		if (projmode == 0) {
+			CheckRange(shipz.y, -1., 1.); // asin takes [-1,1]
 			euler.x = atan2(shipx.y, shipy.y);  // roll angle
 			euler.y = asin(shipz.y);            // pitch angle
 			euler.z = atan2(shipz.x, shipz.z);  // yaw angle
 		} else {
+			CheckRange(shipz.x, -1., 1.); // asin takes [-1,1]
 			euler.x = -atan2(shipy.x, shipx.x); // roll angle
 			euler.y = atan2(shipz.y,shipz.z);   // pitch angle
 			euler.z = asin(shipz.x);            // yaw angle
@@ -240,6 +244,7 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 		euler += euler_offs;
 		for (int i = 0; i < 3; i++)
 			euler.data[i] = posangle (euler.data[i]);
+
 
 		valid_euler = true;
 	}

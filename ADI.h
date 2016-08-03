@@ -44,8 +44,6 @@ protected:
 	void DrawDirectionArrow(oapi::Sketchpad* skp, oapi::IVECTOR2 v);
 
 private:
-	template<class T>T CheckRange(T &Var, const T &Min, const T &Max);
-	template <typename T> int sgn(T val);
 	void GetOpenGLRotMatrix(double* m);
 
 	int x, y;
