@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -13,16 +13,17 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{FDD37414-3C8F-4322-8B45-BAAEC4B23F38}</ProjectGuid>
     <ProjectName>AttitudeIndicatorMFD</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v140</PlatformToolset>
     <UseOfMfc>false</UseOfMfc>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -42,7 +43,15 @@
     <_ProjectFileVersion>12.0.30501.0</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LibraryPath>D:\Programme\Utils\Orbiter\orbiter100830\Orbitersdk\lib;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(SDKLibDir);$(LibraryPath)</LibraryPath>
+    <OutDir>$(ModuleDir)\Plugin</OutDir>
+    <IncludePath>$(SDKIncludeDir);$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>$(SDKIncludeDir);$(IncludePath)</IncludePath>
+    <OutDir>$(ModuleDir)\Plugin</OutDir>
+    <IntDir>$(ProjectDir)$(Configuration)\</IntDir>
+    <LibraryPath>$(SDKLibDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
@@ -65,6 +74,7 @@
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
       <AdditionalDependencies>opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(ModuleDir)\Plugin\$(ProjectName).dll</OutputFile>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -94,6 +104,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -106,7 +117,6 @@
     <ClCompile Include="AttitudeReferenceADI.cpp" />
     <ClCompile Include="attref.cpp" />
     <ClCompile Include="Configuration.cpp" />
-    <ClCompile Include="FlightStatus.cpp" />
     <ClCompile Include="imageloader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -114,8 +124,8 @@
     <ClInclude Include="AttitudeIndicatorMFD.h" />
     <ClInclude Include="AttitudeReferenceADI.h" />
     <ClInclude Include="attref.h" />
+    <ClInclude Include="commons.h" />
     <ClInclude Include="Configuration.h" />
-    <ClInclude Include="FlightStatus.h" />
     <ClInclude Include="imageloader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

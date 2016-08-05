@@ -13,6 +13,7 @@
 
 #include "Orbitersdk.h"
 
+#ifndef ORBITER2016
 // From beta OrbiterAPI.h
 /**
 * \brief Returns the input argument normalised to range 0 ... 2 pi
@@ -24,6 +25,7 @@ inline double posangle(double angle)
 	double a = fmod(angle, PI2);
 	return (a >= 0.0 ? a : a + PI2);
 }
+#endif
 
 class AttitudeReference {
 public:
