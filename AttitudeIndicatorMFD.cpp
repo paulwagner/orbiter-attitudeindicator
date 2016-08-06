@@ -690,18 +690,18 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 				// Row 2
 				iy += (chw3 + th);
-				WriteText(skp, cp1_x + chw3, iy, kw, "xDST", convertAltString(fs.navTargetRelPos.x));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "xVEL", convertAltString(fs.navTargetRelVel.x));
+				WriteText(skp, cp1_x + chw3, iy, kw, "DSTx", convertAltString(fs.navTargetRelPos.x));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "VELx", convertAltString(fs.navTargetRelVel.x));
 
 				// Row 3
 				iy += (chw3 + th);
-				WriteText(skp, cp1_x + chw3, iy, kw, "yDST", convertAltString(fs.navTargetRelPos.y));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "yVEL", convertAltString(fs.navTargetRelVel.y));
+				WriteText(skp, cp1_x + chw3, iy, kw, "DSTy", convertAltString(fs.navTargetRelPos.y));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "VELy", convertAltString(fs.navTargetRelVel.y));
 
 				// Row 4
 				iy += (chw3 + th);
-				WriteText(skp, cp1_x + chw3, iy, kw, "zDST", convertAltString(fs.navTargetRelPos.z));
-				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "zVEL", convertAltString(fs.navTargetRelVel.z));
+				WriteText(skp, cp1_x + chw3, iy, kw, "DSTz", convertAltString(fs.navTargetRelPos.z));
+				WriteText(skp, cp1_x + (mid_width / 2) + chw3, iy, kw, "VELz", convertAltString(fs.navTargetRelVel.z));
 
 				// Indicators
 				if (fs.navType == TRANSMITTER_IDS) {
