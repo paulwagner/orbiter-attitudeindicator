@@ -2,9 +2,7 @@
 #define __ATTITUDEINDICATORMFD_H
 
 #define CONFIG_FILE "MFD\\AttitudeIndicatorMFD.cfg"
-#define DEFAULT_FRAME 3
 #define DEFAULT_ZOOM 1.2
-#define DEFAULT_MODE 0
 #define DEFAULT_SPEED 0;
 #define DEFAULT_LHLN_DATA_MODE 0;
 
@@ -16,7 +14,7 @@ class Configuration;
 const int frmCount = 5;
 const std::string frmStrings[5] = { "ECL", "EQU", "OV/OM", "LH/LN", "NAV" };
 
-// 0=normal, 2=big
+// 0=normal, 1=big
 const int modeCount = 2;
 
 // 0=GS, 1=TAS, 2=IAS

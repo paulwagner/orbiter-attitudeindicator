@@ -16,6 +16,8 @@ Configuration::Configuration () {
 	config.startRadial = STARTRADIAL;
 	config.startPerpendicular = STARTPERPENDICULAR;
 	config.startTurnVectorMode = STARTTURNVECMODE;
+	config.startMode = STARTMODE;
+	config.startFrame = STARTFRAME;
 }
 
 Configuration::~Configuration() {
@@ -68,6 +70,8 @@ bool Configuration::loadConfig(const char* file) {
 	oapiReadItem_bool(fh, S_RADIAL_START, config.startRadial);
 	oapiReadItem_bool(fh, S_PERPENDICULAR_START, config.startPerpendicular);
 	oapiReadItem_int(fh, S_TURNVECMODE_START, config.startTurnVectorMode);
+	oapiReadItem_int(fh, S_MODE_START, config.startMode);
+	oapiReadItem_int(fh, S_FRAME_START, config.startFrame);
 	oapiCloseFile(fh, FILE_IN);
 	return true;
 }

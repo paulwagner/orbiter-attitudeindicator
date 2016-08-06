@@ -68,8 +68,8 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 		oapiWriteLog("[AttitudeIndicatorMFD] Failed to load config.");
 	}
 	zoom = DEFAULT_ZOOM;
-	mode = DEFAULT_MODE;
-	frm = DEFAULT_FRAME;
+	mode = config->getConfig().startMode;
+	frm = config->getConfig().startFrame;
 	speedMode = DEFAULT_SPEED;
 	lhlnDataMode = DEFAULT_LHLN_DATA_MODE;
 	chw = (int)round((double)H / 20);
