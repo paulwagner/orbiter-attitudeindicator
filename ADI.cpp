@@ -5,12 +5,13 @@
 #include "imageloader.h"
 #include "commons.h"
 
-ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config) {
+ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config, MFDSettings* settings) {
 	this->x = x;
 	this->y = y;
 	this->width = width;
 	this->height = height;
 	this->attref = attref;
+	this->settings = settings;
 	this->cw = cw;
 	this->ch = ch;
 
@@ -30,12 +31,6 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	brushPerpendicular = oapiCreateBrush(config.perpendicularColor);
 	brushTarget = oapiCreateBrush(config.targetColor);
 	brushIndicators = oapiCreateBrush(config.indicatorColor);
-
-	drawPrograde = config.startPrograde;
-	drawNormal = config.startNormal;
-	drawRadial = config.startRadial;
-	drawPerpendicular = config.startPerpendicular;
-	turnVectorMode = config.startTurnVectorMode;
 
 	GLuint PixelFormat;
 	BITMAPINFOHEADER BIH;
@@ -178,9 +173,9 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	BitBlt (hDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
 
 	DrawVectors(skp);
-	if (turnVectorMode == 1)
+	if (settings->turnVectorMode == 1)
 		DrawRateIndicators(skp);
-	if (turnVectorMode == 2)
+	if (settings->turnVectorMode == 2)
 		DrawTurnVector(skp);
 	DrawWing(skp);
 }
@@ -380,7 +375,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		return; // No markers in ECL and EQU
 
 	// Prograde
-	if (drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
+	if (settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
 		double d = sin(45 * RAD);
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
@@ -491,7 +486,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 
 
 	// Normal
-	if (drawNormal && isnormal(length(pgd))){
+	if (settings->drawNormal && isnormal(length(pgd))){
 		double dx = sin(60 * RAD);
 		double dy = sin(30 * RAD);
 		double nmlScale = 1.5;
@@ -539,7 +534,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Perpendicular out
-	if (drawPerpendicular && isnormal(length(pgd))) {
+	if (settings->drawPerpendicular && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double pepScale = 1.6;
@@ -581,7 +576,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Radial out
-	if (drawRadial && isnormal(length(pgd))) {
+	if (settings->drawRadial && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double radScale = 1.6;

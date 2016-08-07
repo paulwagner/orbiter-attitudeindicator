@@ -5,32 +5,16 @@
 #include "Configuration.h"
 #include <gl/gl.h>
 #include <gl/glu.h>
-
-#define TURNVECTORCOUNT 3
+#include "MFDCore.h"
 
 class AttitudeReferenceADI;
 class Configuration;
 
 class ADI {
 public:
-	ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& texture);
+	ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, double cw, double ch, CONFIGURATION& config, MFDSettings* settings);
 	~ADI();
 	virtual void DrawBall(oapi::Sketchpad* skp, double zoom);
-	void inline TogglePrograde(){ drawPrograde = !drawPrograde; }
-	void inline ToggleNormal(){ drawNormal = !drawNormal; }
-	void inline ToggleRadial(){ drawRadial = !drawRadial; }
-	void inline TogglePerpendicular(){ drawPerpendicular = !drawPerpendicular; }
-	void inline ToggleTurnVector(){ turnVectorMode++; turnVectorMode %= TURNVECTORCOUNT; }
-	bool inline GetPrograde(){ return drawPrograde; }
-	bool inline GetNormal(){ return drawNormal; }
-	bool inline GetRadial(){ return drawRadial; }
-	bool inline GetPerpendicular(){ return drawPerpendicular; }
-	int inline GetTurnVector(){ return turnVectorMode; }
-	void inline SetPrograde(bool prograde){ drawPrograde = prograde; }
-	void inline SetNormal(bool normal){ drawNormal = normal; }
-	void inline SetRadial(bool radial){ drawRadial = radial; }
-	void inline SetPerpendicular(bool perpendicular){ drawPerpendicular = perpendicular; }
-	void inline SetTurnVector(int newTurnVectorMode){ turnVectorMode = newTurnVectorMode; }
 
 protected:
 	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penPerpendicular, *penTarget, *penIndicators;
@@ -49,15 +33,9 @@ private:
 	int x, y;
 	int width, height;
 	AttitudeReferenceADI* attref;
+	MFDSettings* settings;
 	double cw, ch;
 	double diameter;
-
-	bool drawPrograde;
-	bool drawNormal;
-	bool drawRadial;
-	bool drawPerpendicular;
-	// 0 - No turn vectors; 1 - PRIs; 2 - Turn vectors on ball
-	int turnVectorMode;
 
 	HDC hDC;
 	HGLRC hRC;
