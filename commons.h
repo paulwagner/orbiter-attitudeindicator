@@ -1,6 +1,12 @@
 #ifndef __COMMONS_ADI_H
 #define __COMMONS_ADI_H
 
+#ifdef _DEBUG
+#define TRACE(X) oapiWriteLog(X);
+#else
+#define TRACE(X)
+#endif
+
 template<class T>
 T CheckRange(T &Var, const T &Min, const T &Max) {
 	T Diff = 0;

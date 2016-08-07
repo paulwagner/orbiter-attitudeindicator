@@ -7,6 +7,7 @@
 #include "AttitudeReferenceADI.h"
 #include <sstream>
 #include "Configuration.h"
+#include "commons.h"
 
 #define SRFNAVTYPE(x, v) ((x == TRANSMITTER_NONE && v->GetAtmRef() != 0) ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
 
@@ -20,7 +21,7 @@ static AttitudeIndicatorMFD* CurrentMFD = 0;
 
 DLLCLBK void InitModule (HINSTANCE hDLL)
 {
-	oapiWriteLog("[AttitudeIndicatorMFD] Enter: InitModule");
+	TRACE("[AttitudeIndicatorMFD] Enter: InitModule");
 	static char *name = "ADI";   // MFD mode name
 	MFDMODESPECEX spec;
 	spec.name = name;
@@ -34,7 +35,7 @@ DLLCLBK void InitModule (HINSTANCE hDLL)
 
 DLLCLBK void ExitModule (HINSTANCE hDLL)
 {
-	oapiWriteLog("[AttitudeIndicatorMFD] Enter: ExitModule");
+	TRACE("[AttitudeIndicatorMFD] Enter: ExitModule");
 	// Unregister the custom MFD mode when the module is unloaded
 	oapiUnregisterMFDMode(MFDMode);
 }
@@ -46,7 +47,7 @@ DLLCLBK void ExitModule (HINSTANCE hDLL)
 AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 : MFD2 (w, h, vessel)
 {
-	oapiWriteLog("[AttitudeIndicatorMFD] Enter: _cdecl");
+	TRACE("[AttitudeIndicatorMFD] Enter: _cdecl");
 	penBlue = oapiCreatePen(1, 1, BLUE);
 	penGreen = oapiCreatePen(1, 1, GREEN);
 	penGreen2 = oapiCreatePen(1, 1, GREEN2);
@@ -76,13 +77,13 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, VESSEL *vessel)
 	chw = min(chw,(int)round((double)W / 20));
 	adi = 0;
 	CreateADI();
-	oapiWriteLog("[AttitudeIndicatorMFD] Leave: _cdecl");
+	TRACE("[AttitudeIndicatorMFD] Leave: _cdecl");
 }
 
 // Destructor
 AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 {
-	oapiWriteLog("[AttitudeIndicatorMFD] Enter: _ddecl");
+	TRACE("[AttitudeIndicatorMFD] Enter: _ddecl");
 	// MFD cleanup code
 	delete (attref);
 	delete (adi);
@@ -105,7 +106,7 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 }
 
 void AttitudeIndicatorMFD::CreateADI() {
-	oapiWriteLog("[AttitudeIndicatorMFD] Enter: CreateADI");
+	TRACE("[AttitudeIndicatorMFD] Enter: CreateADI");
 	bool saved = false, pgd = false, nrm = false, rad = false, ratei = false;
 	int turnv = 0;
 	if (adi) {
