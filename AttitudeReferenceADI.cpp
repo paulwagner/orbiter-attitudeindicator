@@ -86,45 +86,46 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	
 	fs.dns = v->GetAtmDensity();
 	fs.stp = v->GetAtmPressure();
+	fs.dnp = 0.5*fs.dns*pow(v->GetAirspeed(), 2.0);
 
-	//double mach = v->GetMachNumber();
-	//ATMPARAM ap;
-	//oapiGetAtm(v->GetHandle(), &ap);
-	//double gamma = ac->gamma; // Ratio of specific heats
-	double p1 = fs.stp; // Freestream pressure
-	double d1 = fs.dns; // Freestream density
-	//double ps = ac->p0; // Standard sea level pressure
-	//double ds = ac->rho0; // Standard sea level density
+	// IAS calculation by Hielor
+	fs.ias = -1; fs.tas = -1;
+	// speed of sound at sea level
+	double speedOfSound = 340.29;
+	// use Orbiter's constant for earth sea level pressure
+	double seaLevelPres = ATMP;
+	double statPres, dynPres, mach;
+	const ATMCONST *atmConst;
+	OBJHANDLE atmRef = v->GetAtmRef();
+	if (atmRef != NULL) {
+		// Freestream static pressure
+		statPres = v->GetAtmPressure();
 
-	fs.ias = 0; fs.tas = 0;
-	if (p1 > 10e-4) {
-		fs.tas = v->GetAirspeed();
-		const ATMCONST *ac = oapiGetPlanetAtmConstants(body);
-		if (ac != 0 && ac->rho0 != 0 && d1 != 0) {
-			fs.ias = fs.tas / (ac->rho0 / d1); // Approximation
+		// Retrieve the ratio of specific heats
+		atmConst = oapiGetPlanetAtmConstants(atmRef);
+		double gamma = atmConst->gamma;
+
+		// Mach number
+		mach = v->GetMachNumber();
+
+		// Determine the dynamic pressure using the
+		// thermal definition for stagnation pressure
+		dynPres = (gamma - 1) * pow(mach, 2.0) / 2 + 1;
+		dynPres = pow(dynPres, gamma / (gamma - 1));
+		// Convert stagnation pressure to dynamic pressure
+		dynPres = dynPres * statPres - statPres;
+
+		if (fs.dnp > 10e-4) {
+			fs.tas = v->GetAirspeed();
+
+			// Following is the equation from the Orbiter manual, page 62
+			fs.ias = dynPres / seaLevelPres + 1;
+			fs.ias = pow(fs.ias, ((gamma - 1) / gamma)) - 1.0;
+			fs.ias = fs.ias * 2 / (gamma - 1);
+			fs.ias = sqrt(fs.ias) * speedOfSound;
 		}
+
 	}
-	/*
-	if (p1 != 0 && ps != 0 && ds != 0 && gamma > 1) {
-		double as = sqrt(gamma * ps / ds); // Sea level speed of sound
-		double gamma_1 = gamma - 1;
-		double gamma_r = gamma_1 / gamma;
-		double k = 2. / gamma_1;
-
-		// TAS
-		double p0 = p1 / (pow((mach*mach / k) + 1, 1 / gamma_r));
-		fs.tas = v->GetAirspeed();
-
-		if (p1 / p0 > 1)
-			fs.tas = sqrt((2*gamma*ac->R*ap.T/gamma_1) * (pow(p1/p0, gamma_r) - 1));
-		fs.tas = v->GetAirspeed();
-
-		// IAS
-		fs.ias = as * sqrt(k * (pow(((p1 - p0) / ps) + 1, gamma_r) - 1));
-		fs.ias = fs.tas / (ds / v->GetAtmDensity());
-		fs.ias = fs.tas / (59.05 * (1 + 0.00002*3.28084*v->GetAltitude()));
-	}
-	*/
 
 	// Body-relative parameters
 	body = GetVessel()->GetGravityRef();

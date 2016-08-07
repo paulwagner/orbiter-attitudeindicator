@@ -16,6 +16,7 @@ typedef struct {
 	double aoa;
 	double dns;
 	double stp;
+	double dnp;
 	double tas;
 	double os;
 	double ias;

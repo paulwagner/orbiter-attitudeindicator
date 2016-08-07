@@ -400,6 +400,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->SetTextColor(WHITE);
 		skp->Rectangle(cp1_x, cp1_y, x, y + height);
 		double airspeed = 0;
+		bool has_airspeed = true;
 		std::string spd;
 		if (frm == 3 || (frm == 4 && SRFNAVTYPE(fs.navType, attref->GetVessel()))) {
 			switch (speedMode) {
@@ -412,6 +413,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			}
 		} else {
 			airspeed = fs.os; spd = "OS m/s";
+		}
+		if (airspeed < 0) {
+			has_airspeed = false;
+			airspeed = 0;
 		}
 		int spd_off = (int)(airspeed / (100 * 1000));  // in 100k m/s
 		int rspd = (int)(round(airspeed * 10 / (double)scale) * (double)scale);
@@ -469,6 +474,8 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		else {
 			s = std::to_string((int)round(s_airspeed));
 		}
+		if (!has_airspeed)
+			s = "-----";
 		skp->SetPen(penGreen);
 		skp->Line(cp1_x, mid_y, cp1_x - (int)(1.25*chw), mid_y);
 		int tw = skp->GetTextWidth(s.c_str());
@@ -980,10 +987,14 @@ std::string AttitudeIndicatorMFD::convertAltString(double altitude) {
 int AttitudeIndicatorMFD::MsgProc(UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg) {
-	case OAPI_MSG_MFD_OPENED:
+	case OAPI_MSG_MFD_OPENED: {
 		// Our new MFD mode has been selected, so we create the MFD and
 		// return a pointer to it.
-		return (int)new AttitudeIndicatorMFD(LOWORD(wparam), HIWORD(wparam), (VESSEL*)lparam);;
+		char buf[50];
+		sprintf(buf, "MsgProc %d, %d", LOWORD(wparam), HIWORD(wparam));
+		oapiWriteLog(buf);
+		return (int)new AttitudeIndicatorMFD(LOWORD(wparam), HIWORD(wparam), (VESSEL*)lparam);
+	}
 	}
 	return 0;
 }
