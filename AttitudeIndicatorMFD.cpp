@@ -397,7 +397,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->SetPen(penBlue);
 		skp->SetBrush(brushBlue);
 		skp->SetTextColor(WHITE);
-		skp->Rectangle(cp1_x, cp1_y, x, y + height);
+		skp->Rectangle(x, cp1_y, cp1_x, y + height);
 		double airspeed = 0;
 		bool has_airspeed = true;
 		std::string spd;
@@ -431,7 +431,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetBrush(brushWhite);
 				skp->SetTextColor(WHITE);
 				if (a % 1000 == 0) {
-					skp->Line(cp1_x, ty, cp1_x - chw, ty);
+					skp->Line(cp1_x - chw, ty, cp1_x, ty);
 					s = std::to_string((int)(a / 10) - spd_off * (100 * 1000));
 					int n = 5 - s.length();
 					if (n < 0) n = 0;
@@ -441,10 +441,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					skp->Text(cp1_x - (int)(1.25*chw) - tw, ty - (th / 2), s.c_str(), s.length());
 				}
 				else if (a % 500 == 0) {
-					skp->Line(cp1_x, ty, cp1_x - (int)(chw / 2), ty);
+					skp->Line(cp1_x - (int)(chw / 2), ty, cp1_x, ty);
 				}
 				else if (a % 250 == 0) {
-					skp->Line(cp1_x, ty, cp1_x - (int)(chw / 3), ty);
+					skp->Line(cp1_x - (int)(chw / 3), ty, cp1_x, ty);
 				}
 				if (k == 0) {
 					a += scale;
@@ -476,15 +476,15 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		if (!has_airspeed)
 			s = "-----";
 		skp->SetPen(penGreen);
-		skp->Line(cp1_x, mid_y, cp1_x - (int)(1.25*chw), mid_y);
+		skp->Line(cp1_x - (int)(1.25*chw), mid_y, cp1_x, mid_y);
 		int tw = skp->GetTextWidth(s.c_str());
 		int th = skp->GetCharSize() & 0xFFFF;
 		skp->SetPen(penBlack);
 		skp->SetBrush(brushBlack);
-		skp->Rectangle(cp1_x - (int)(1.25*chw), mid_y - (th * 2 / 3), cp1_x - (int)(1.25*chw) - max(cur_width, tw), mid_y + (th * 2 / 3));
+		skp->Rectangle(cp1_x - (int)(1.25*chw) - max(cur_width, tw), mid_y - (th * 2 / 3), cp1_x - (int)(1.25*chw), mid_y + (th * 2 / 3));
 		skp->SetBrush(NULL);
 		skp->SetPen(penGreen);
-		skp->Rectangle(cp1_x - (int)(1.25*chw), mid_y - (th * 2 / 3), cp1_x - (int)(1.25*chw) - max(cur_width, tw), mid_y + (th * 2 / 3));
+		skp->Rectangle(cp1_x - (int)(1.25*chw) - max(cur_width, tw), mid_y - (th * 2 / 3), cp1_x - (int)(1.25*chw), mid_y + (th * 2 / 3));
 		skp->SetTextColor(GREEN);
 		int offset = (cur_width - tw);
 		if (offset < 0)
@@ -636,7 +636,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	int kw = (int)(2.5*chw);
 	int mid_width = cp2_x - cp1_x;
 	skp->SetPen(penGreen);
-	skp->Line(cp1_x + chw3, cp1_y, cp2_x - chw3, cp1_y);
+	skp->Line(cp1_x - chw3, cp1_y, cp2_x + chw3, cp1_y);
 	skp->Line(cp1_x + (mid_width / 2), cp1_y, cp1_x + (mid_width / 2), y + height);
 	skp->SetTextColor(WHITE);
 	std::string frmS = frmStrings[settings->frm];
@@ -722,7 +722,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					int swidth2 = (skp->GetTextWidth(str, slen) / 2);
 					int mid = (int)(width / 2);
 					skp->Rectangle(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height);
-					skp->TextBox(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height, str, slen);
+					skp->Text(x + mid - swidth2, y + height - th, str, slen);
 				}
 				skp->SetTextColor(WHITE);
 				if (fs.docked) {
@@ -731,10 +731,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					int tw = skp->GetTextWidth("DOCKED", 6);
 					int offset = (int)((cp1_x - x - tw) / 2);
 					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
-					skp->TextBox(x + offset, y + height - th, cp1_x - offset, y + height, "DOCKED", 6);
+					skp->Text(x + offset, y + height - th, "DOCKED", 6);
 					offset = (int)((x + width - cp2_x - tw) / 2);
 					skp->Rectangle(cp2_x + offset, y + height - th, x + width - offset, y + height);
-					skp->TextBox(cp2_x + offset, y + height - th, x + width - offset, y + height, "DOCKED", 6);
+					skp->Text(cp2_x + offset, y + height - th, "DOCKED", 6);
 				}
 
 				skp->SetBrush(brushGreen2);
@@ -919,7 +919,7 @@ void AttitudeIndicatorMFD::DrawIndicators(oapi::Sketchpad* skp, int x1, int y1, 
 	double ld = min(m, log10(v));
 	if(b) ld += 1;
 	if (ld < 0) ld = 0;
-	skp->Rectangle(x1, y2 - 1, x2, y2 - (int)(ld * h / 4) - 1);
+	skp->Rectangle(x1, y2 - (int)(ld * h / 4) - 1, x2, y2 - 1);
 	skp->SetBrush(NULL);
 	skp->SetPen(penWhite);
 	skp->Line(x1, y1, x1, y2);

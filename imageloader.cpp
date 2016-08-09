@@ -40,7 +40,7 @@ Image* loadBMP(const char* filename) {
 	file.read((char*)px, info->biSizeImage);
 
 	UINT8 tmp = 0;
-	for (unsigned long i = 0; i < info->biSizeImage; i += 3) {
+	for (unsigned long i = 0; i < info->biSizeImage - (info->biSizeImage % 3); i += 3) {
 		tmp = px[i];
 		px[i] = px[i + 2];
 		px[i + 2] = tmp;
