@@ -101,22 +101,22 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 }
 
 ADI::~ADI() {
-	delete penWing;
-	delete penTurnVec;
-	delete penGrad;
-	delete penNormal;
-	delete penRadial;
-	delete penPerpendicular;
-	delete penTarget;
-	delete penIndicators;
-	delete brushWing;
-	delete brushTurnVec;
-	delete brushGrad;
-	delete brushNormal;
-	delete brushRadial;
-	delete brushPerpendicular;
-	delete brushTarget;
-	delete brushIndicators;
+	oapiReleasePen(penWing);
+	oapiReleasePen(penTurnVec);
+	oapiReleasePen(penGrad);
+	oapiReleasePen(penNormal);
+	oapiReleasePen(penRadial);
+	oapiReleasePen(penPerpendicular);
+	oapiReleasePen(penTarget);
+	oapiReleasePen(penIndicators);
+	oapiReleaseBrush(brushWing);
+	oapiReleaseBrush(brushTurnVec);
+	oapiReleaseBrush(brushGrad);
+	oapiReleaseBrush(brushNormal);
+	oapiReleaseBrush(brushRadial);
+	oapiReleaseBrush(brushPerpendicular);
+	oapiReleaseBrush(brushTarget);
+	oapiReleaseBrush(brushIndicators);
 	if (quad)
 		gluDeleteQuadric(quad);
 	wglMakeCurrent(NULL, NULL);	//standard OpenGL release

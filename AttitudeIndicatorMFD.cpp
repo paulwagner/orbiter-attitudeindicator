@@ -100,20 +100,20 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	delete (attref);
 	delete (adi);
 	delete (config);
-	delete (penBlue);
-	delete (penGreen);
-	delete (penGreen2);
-	delete (penRed);
-	delete (penWhite);
-	delete (penBlack);
-	delete (penYellow2);
-	delete (brushBlue);
-	delete (brushGreen);
-	delete (brushGreen2);
-	delete (brushRed);
-	delete (brushWhite);
-	delete (brushBlack);
-	delete (brushYellow2);
+	oapiReleasePen(penBlue);
+	oapiReleasePen(penGreen);
+	oapiReleasePen(penGreen2);
+	oapiReleasePen(penRed);
+	oapiReleasePen(penWhite);
+	oapiReleasePen(penBlack);
+	oapiReleasePen(penYellow2);
+	oapiReleaseBrush(brushBlue);
+	oapiReleaseBrush(brushGreen);
+	oapiReleaseBrush(brushGreen2);
+	oapiReleaseBrush(brushRed);
+	oapiReleaseBrush(brushWhite);
+	oapiReleaseBrush(brushBlack);
+	oapiReleaseBrush(brushYellow2);
 	CurrentMFD = 0;
 }
 
