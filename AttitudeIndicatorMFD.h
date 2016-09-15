@@ -24,7 +24,9 @@ protected:
 	AttitudeReferenceADI *attref;
 	Configuration *config;
 	ADI *adi;
-	int chw;
+	double chw;
+	double chw2;
+	double chw3;
 	void PostStep(double simt, double simdt, double mjd);
 	void CreateADI();
 	void DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height);
