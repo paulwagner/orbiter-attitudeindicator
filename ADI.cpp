@@ -101,22 +101,22 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 }
 
 ADI::~ADI() {
-	delete penWing;
-	delete penTurnVec;
-	delete penGrad;
-	delete penNormal;
-	delete penRadial;
-	delete penPerpendicular;
-	delete penTarget;
-	delete penIndicators;
-	delete brushWing;
-	delete brushTurnVec;
-	delete brushGrad;
-	delete brushNormal;
-	delete brushRadial;
-	delete brushPerpendicular;
-	delete brushTarget;
-	delete brushIndicators;
+	oapiReleasePen(penWing);
+	oapiReleasePen(penTurnVec);
+	oapiReleasePen(penGrad);
+	oapiReleasePen(penNormal);
+	oapiReleasePen(penRadial);
+	oapiReleasePen(penPerpendicular);
+	oapiReleasePen(penTarget);
+	oapiReleasePen(penIndicators);
+	oapiReleaseBrush(brushWing);
+	oapiReleaseBrush(brushTurnVec);
+	oapiReleaseBrush(brushGrad);
+	oapiReleaseBrush(brushNormal);
+	oapiReleaseBrush(brushRadial);
+	oapiReleaseBrush(brushPerpendicular);
+	oapiReleaseBrush(brushTarget);
+	oapiReleaseBrush(brushIndicators);
 	if (quad)
 		gluDeleteQuadric(quad);
 	wglMakeCurrent(NULL, NULL);	//standard OpenGL release
@@ -650,13 +650,22 @@ void ADI::DrawRateIndicators(oapi::Sketchpad* skp) {
 	double spitch = fs.pitchrate / 45;
 	CheckRange(spitch, -1.0, 1.0);
 	int pitchrect = (int)(spitch * (double)height / 4);
-	skp->Rectangle(width - border - rwidth, height / 2, width - border, (height / 2) + pitchrect);
+	if (pitchrect >= 0)
+		skp->Rectangle(width - border - rwidth, height / 2, width - border, (height / 2) + pitchrect);
+	else
+		skp->Rectangle(width - border - rwidth, (height / 2) + pitchrect, width - border, height / 2);
 	double sroll = fs.rollrate / 45;
 	CheckRange(sroll, -1.0, 1.0);
 	int rollrect = (int)(sroll * (double)width / 4);
-	skp->Rectangle(width / 2, border, (width / 2) + rollrect, border + rwidth);
+	if (rollrect >= 0)
+		skp->Rectangle(width / 2, border, (width / 2) + rollrect, border + rwidth);
+	else
+		skp->Rectangle((width / 2) + rollrect, border, width / 2, border + rwidth);
 	double syaw = fs.yawrate / 45;
 	CheckRange(syaw, -1.0, 1.0);
 	int yawrect = (int)(syaw * (double)width / 4);
-	skp->Rectangle(width / 2, height - border, (width / 2) + yawrect, height - border - rwidth);
+	if (yawrect >= 0)
+		skp->Rectangle(width / 2, height - border - rwidth, (width / 2) + yawrect, height - border);
+	else
+		skp->Rectangle((width / 2) + yawrect, height - border - rwidth, width / 2, height - border);
 }
