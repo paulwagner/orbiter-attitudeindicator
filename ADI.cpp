@@ -272,7 +272,7 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->LineTo(w2, h2 + (int)ch);
 	skp->LineTo(w2 + (int)(cw * 3 / 2), h2);
 	skp->LineTo(w2 + (int)(cw * 4), h2);
-	skp->Rectangle(w2 + 1, h2 + 1, w2 - 1, h2 - 1);
+	skp->Rectangle(w2 - 1, h2 - 1, w2 + 1, h2 + 1);
 }
 
 void ADI::DrawTurnVector(oapi::Sketchpad* skp) {
@@ -400,7 +400,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetBrush(brushGrad);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
-			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Ellipse(ix - (int)cw, iy - (int)ch, ix + (int)cw, iy + (int)ch);
 			skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
 			skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
 			skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
@@ -411,7 +411,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		if (abs(phi) <= phiF) {
 			skp->SetPen(penGrad);
 			skp->SetBrush(NULL);
-			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Ellipse(ix - (int)cw, iy - (int)ch, ix + (int)cw, iy + (int)ch);
 			skp->Line(ix, iy - (int)ch, ix, iy - 2 * (int)ch);
 			skp->Line(ix + (int)cw, iy, ix + 2 * (int)cw, iy);
 			skp->Line(ix - (int)cw, iy, ix - 2 * (int)cw, iy);
@@ -561,7 +561,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetBrush(brushPerpendicular);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
-			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Ellipse(ix - (int)cw, iy - (int)ch, ix + (int)cw, iy + (int)ch);
 			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)(pepScale * cw*cd), iy + (int)(pepScale * ch*sd));
 			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)(pepScale * cw*cd), iy - (int)(pepScale * ch*sd));
 			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)(pepScale * cw*cd), iy + (int)(pepScale * ch*sd));
@@ -575,7 +575,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetBrush(brushPerpendicular);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
-			skp->Ellipse(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Ellipse(ix - (int)cw, iy - (int)ch, ix + (int)cw, iy + (int)ch);
 			skp->Line(ix + (int)(cw*cd), iy + (int)(ch*sd), ix + (int)((2 - pepScale) * cw*cd), iy + (int)((2 - pepScale) * ch*sd));
 			skp->Line(ix + (int)(cw*cd), iy - (int)(ch*sd), ix + (int)((2 - pepScale) * cw*cd), iy - (int)((2 - pepScale) * ch*sd));
 			skp->Line(ix - (int)(cw*cd), iy + (int)(ch*sd), ix - (int)((2 - pepScale) * cw*cd), iy + (int)((2 - pepScale) * ch*sd));
@@ -604,7 +604,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
 			// TODO: Think of another marker symbol for radial
-			skp->Rectangle(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Rectangle(ix - (int)cw, iy - (int)ch, ix + (int)cw, iy + (int)ch);
 			skp->Line(ix, iy + (int)(ch), ix, iy + (int)(2 * ch));
 			skp->Line(ix, iy - (int)(ch), ix, iy - (int)(2 * ch));
 			skp->Line(ix + (int)(cw), iy, ix + (int)(2*ch), iy);
@@ -618,7 +618,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetBrush(brushRadial);
 			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
 			skp->SetBrush(NULL);
-			skp->Rectangle(ix + (int)cw, iy + (int)ch, ix - (int)cw, iy - (int)ch);
+			skp->Rectangle(ix - (int)cw, iy - (int)ch, ix + (int)cw, iy + (int)ch);
 			skp->Line(ix, iy + (int)(ch), ix, iy + (int)(ch / 2));
 			skp->Line(ix, iy - (int)(ch), ix, iy - (int)(ch / 2));
 			skp->Line(ix + (int)(cw), iy, ix + (int)(ch / 2), iy);
