@@ -134,7 +134,6 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	}
 
 	wglMakeCurrent(hDC, hRC);
-	HDC	hDC = skp->GetDC();
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);             // Clear The Screen And The Depth Buffer        
 
 	diameter = zoom * min(width, height);
@@ -170,7 +169,21 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 
 	glFlush();
 	glFinish();
-	BitBlt (hDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
+	HDC	skphDC = skp->GetDC();
+	if (skphDC != NULL) {
+		BitBlt(skphDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
+	}
+	else {
+		// Workaround for newer D3D9 clients
+		SURFHANDLE surf = skp->GetSurface();
+		SURFHANDLE newSurf = oapiCreateSurfaceEx(width, height, OAPISURFACE_SYSMEM);
+		HDC newSurfDC = oapiGetDC(newSurf);
+		BitBlt(newSurfDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
+		oapiReleaseDC(newSurf, newSurfDC);
+
+		oapiBlt(surf, newSurf, x, y, 0, 0, width, height);
+		oapiDestroySurface(newSurf);
+	}
 
 	DrawVectors(skp);
 	if (settings->turnVectorMode == 1)
