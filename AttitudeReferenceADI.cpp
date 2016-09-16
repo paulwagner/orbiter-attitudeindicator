@@ -115,7 +115,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 		// Convert stagnation pressure to dynamic pressure
 		dynPres = dynPres * statPres - statPres;
 
-		if (fs.dnp > 10e-4) {
+		if (fs.dnp > 10e-4 || fs.ground) {
 			fs.tas = v->GetAirspeed();
 
 			// Following is the equation from the Orbiter manual, page 62
