@@ -419,7 +419,8 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			case 2:
 				airspeed = fs.ias; spd = "IAS m/s"; break;
 			}
-		} else {
+		}
+		else {
 			airspeed = fs.os; spd = "OS m/s";
 		}
 		if (airspeed < 0) {
@@ -446,7 +447,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					if (n < 0) n = 0;
 					s.insert(0, n, '0');
 					int tw = skp->GetTextWidth(s.c_str());
-					int th2 = (int) round((double)(skp->GetCharSize() & 0xFFFF) / 2);
+					int th2 = (int)round((double)(skp->GetCharSize() & 0xFFFF) / 2);
 					skp->Text(cp1_x - chw54_i - tw, ty - th2, s.c_str(), s.length());
 				}
 				else if (a % 5000 == 0) {
@@ -680,16 +681,15 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			// Row 2
 			iy += (chw3_i + th);
 			WriteText(skp, cp1_x + chw3_i, iy, kw, "CRS", convertAngleString(fs.navCrs[attref->GetNavid()]));
+			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "HDG", convertAngleString(fs.heading));
 
+			// Row 3
+			iy += (chw3_i + th);
 			if (fs.hasNavTarget) {
-				WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "BRG", convertAngleString(fs.navBrg));
-
-				// Row 3
-				iy += (chw3_i + th);
+				WriteText(skp, cp1_x + chw3_i, iy, kw, "BRG", convertAngleString(fs.navBrg));
 				WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "DST", convertAltString(length(fs.navTargetRelPos)));
-			} else {
-				iy += (chw3_i + th);
 			}
+
 			// Row 4
 			iy += (chw3_i + th);
 			double ang = fs.lon;
@@ -858,12 +858,12 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			// Row 2
 			iy += (chw3_i + th);
 			WriteText(skp, cp1_x + chw3_i, iy, kw, "AoA", convertAngleString(fs.aoa));
-			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "VS", convertAltString(fs.vs));
+			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "HDG", convertAngleString(fs.heading));
 
 			// Row 3
 			iy += (chw3_i + th);
-			WriteText(skp, cp1_x + chw3_i, iy, kw, "STP", convertAltString(fs.stp));
-			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "DNS", convertAltString(fs.dns));
+			WriteText(skp, cp1_x + chw3_i, iy, kw, "DNP", convertAltString(fs.dnp));
+			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "VS", convertAltString(fs.vs));
 
 			// Row 4
 			iy += (chw3_i + th);
