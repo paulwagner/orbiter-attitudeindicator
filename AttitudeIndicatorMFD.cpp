@@ -308,8 +308,8 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 		DrawDataField(skp, 1, (H * 2 / 3) + 1, W - 2, (H / 3) - 2);
 	else {
 		int th = skp->GetCharSize() & 0xFFFF;
-		int chw2 = (int)round(chw2);
-		int chw3 = (int)round(chw3);
+		int chw2_i = (int)round(chw2);
+		int chw3_i = (int)round(chw3);
 		skp->SetTextColor(WHITE);
 		skp->SetBrush(brushBlack);
 		skp->SetPen(penBlack);
@@ -319,27 +319,27 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 		if (settings->frm == 4) frmS.append(std::to_string(attref->GetNavid() + 1));
 		int slen = frmS.length();
 		int swidth = skp->GetTextWidth(frmS.c_str(), slen);
-		skp->Rectangle(chw2, chw3, chw2 + swidth, chw3 + th);
-		skp->TextBox(chw2, chw3, chw2 + swidth, chw3 + th, frmS.c_str(), slen);
+		skp->Rectangle(chw2_i, chw3_i, chw2_i + swidth, chw3_i + th);
+		skp->TextBox(chw2_i, chw3_i, chw2_i + swidth, chw3_i + th, frmS.c_str(), slen);
 		char buf[50];
 		if (attref->GetReferenceName(buf, 50)) {
 			slen = strlen(buf);
 			swidth = skp->GetTextWidth(buf, slen);
-			skp->Rectangle(W - swidth - chw2, chw3, W - chw2, chw3 + th);
-			skp->TextBox(W - swidth - chw2, chw3, W - chw2, chw3 + th, buf, slen);
+			skp->Rectangle(W - swidth - chw2_i, chw3_i, W - chw2_i, chw3_i + th);
+			skp->TextBox(W - swidth - chw2_i, chw3_i, W - chw2_i, chw3_i + th, buf, slen);
 		}
 
 		if (settings->frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
 			skp->SetTextColor(BLACK);
 			skp->SetPen(penYellow2);
 			skp->SetBrush(brushYellow2);
-			char* str = "DOCKPORT";
+			char* str = "DOCK";
 			if (!attref->IsDockRef())
 				str = "VESSEL";
 			int slen = strlen(str);
 			int swidth = skp->GetTextWidth(str, slen);
-			skp->Rectangle(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th);
-			skp->TextBox(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th, str, slen);
+			skp->Rectangle(W - swidth - chw2_i, 2 * chw3_i + th, W - chw2_i, 2 * chw3_i + 2 * th);
+			skp->TextBox(W - swidth - chw2_i, 2 * chw3_i + th, W - chw2_i, 2 * chw3_i + 2 * th, str, slen);
 		}
 		if (settings->frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_VTOL) {
 			skp->SetTextColor(BLACK);
@@ -350,8 +350,8 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 				str = "NOSE";
 			int slen = strlen(str);
 			int swidth = skp->GetTextWidth(str, slen);
-			skp->Rectangle(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th);
-			skp->TextBox(W - swidth - chw2, 2 * chw3 + th, W - chw2, 2 * chw3 + 2 * th, str, slen);
+			skp->Rectangle(W - swidth - chw2_i, 2 * chw3_i + th, W - chw2_i, 2 * chw3_i + 2 * th);
+			skp->TextBox(W - swidth - chw2_i, 2 * chw3_i + th, W - chw2_i, 2 * chw3_i + 2 * th, str, slen);
 		}
 
 	}
@@ -386,7 +386,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	int chw54_i = (int)round(5 * (chw2 / 2));
 	// Set font
 	oapi::Font *f = oapiCreateFont(chw_i, true, "Sans");
-	oapi::Font *fsmall = oapiCreateFont((int)round(6 * (chw2 / 4)), true, "Sans");
+	oapi::Font *fsmall = oapiCreateFont((int)round(9 * (chw2 / 5)), true, "Sans");
 	oapi::Font *fxsmall = oapiCreateFont((int)round(7 * (chw2 / 4)), true, "Sans");
 	skp->SetFont(f);
 	skp->SetTextColor(WHITE);
@@ -732,24 +732,23 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					skp->SetTextColor(BLACK);
 					skp->SetPen(penYellow2);
 					skp->SetBrush(brushYellow2);
-					char* str = "DOCKPORT";
-					if (!attref->IsDockRef())
+					char* str = "DOCK";
+					int tw = skp->GetTextWidth("DOCK", 4);
+					if (!attref->IsDockRef()) {
 						str = "VESSEL";
+						tw = skp->GetTextWidth("VESSEL", 6);
+					}
 					int slen = strlen(str);
-					int swidth2 = (skp->GetTextWidth(str, slen) / 2);
-					int mid = (int)(width / 2);
-					skp->Rectangle(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height);
-					skp->Text(x + mid - swidth2, y + height - th, str, slen);
+					int offset = (int)((cp1_x - x - tw) / 2);
+					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
+					skp->Text(x + offset, y + height - th, str, slen);
 				}
 				skp->SetTextColor(WHITE);
 				if (fs.docked) {
 					skp->SetBrush(brushRed);
 					skp->SetPen(penRed);
 					int tw = skp->GetTextWidth("DOCKED", 6);
-					int offset = (int)((cp1_x - x - tw) / 2);
-					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
-					skp->Text(x + offset, y + height - th, "DOCKED", 6);
-					offset = (int)((x + width - cp2_x - tw) / 2);
+					int offset = (int)((x + width - cp2_x - tw) / 2);
 					skp->Rectangle(cp2_x + offset, y + height - th, x + width - offset, y + height);
 					skp->Text(cp2_x + offset, y + height - th, "DOCKED", 6);
 				}
@@ -808,22 +807,21 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetPen(penYellow2);
 				skp->SetBrush(brushYellow2);
 				char* str = "TOP";
-				if (!attref->IsDockRef())
+				int tw = skp->GetTextWidth("TOP", 3);
+				if (!attref->IsDockRef()) {
 					str = "NOSE";
+					tw = skp->GetTextWidth("NOSE", 4);
+				}
 				int slen = strlen(str);
-				int swidth2 = (skp->GetTextWidth(str, slen) / 2);
-				int mid = (int)(width / 2);
-				skp->Rectangle(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height);
-				skp->TextBox(x + mid - swidth2, y + height - th, x + mid + swidth2, y + height, str, slen);
+				int offset = (int)((cp1_x - x - tw) / 2);
+				skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
+				skp->TextBox(x + offset, y + height - th, cp1_x - offset, y + height, str, slen);
 				skp->SetTextColor(WHITE);
 				if (fs.ground) {
 					skp->SetBrush(brushRed);
 					skp->SetPen(penRed);
 					int tw = skp->GetTextWidth("GROUND", 6);
-					int offset = (int)((cp1_x - x - tw) / 2);
-					skp->Rectangle(x + offset, y + height - th, cp1_x - offset, y + height);
-					skp->TextBox(x + offset, y + height - th, cp1_x - offset, y + height, "GROUND", 6);
-					offset = (int)((x + width - cp2_x - tw) / 2);
+					int offset = (int)((x + width - cp2_x - tw) / 2);
 					skp->Rectangle(cp2_x + offset, y + height - th, x + width - offset, y + height);
 					skp->TextBox(cp2_x + offset, y + height - th, x + width - offset, y + height, "GROUND", 6);
 				}
