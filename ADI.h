@@ -34,7 +34,9 @@ private:
 	int width, height;
 	AttitudeReferenceADI* attref;
 	MFDSettings* settings;
-	double cw, ch;
+	double cw, ch, cw23, ch23;
+	int cw_i, cw3_i, cw2_i, cw23_i;
+	int ch_i, ch3_i, ch2_i, ch23_i;
 	double diameter;
 
 	HDC hDC;

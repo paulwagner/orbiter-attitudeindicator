@@ -89,7 +89,6 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 	chw = min(chw,round((double)W / 20));
 	chw2 = chw / 2;
 	chw3 = chw / 3;
-	oapiWriteLogV("[ADI] W: %d, H: %d, chw: %f", (int)W, (int)H, chw);
 	adi = 0;
 	CreateADI();
 	TRACE("[AttitudeIndicatorMFD] Leave: _cdecl");
@@ -127,14 +126,14 @@ void AttitudeIndicatorMFD::CreateADI() {
 	}
 	switch (settings->mode) {
 	case 0:
-		adi = new ADI(1, 1, W - 2, H * 2 / 3, attref, 2 * chw3, 2 * chw3, config->getConfig(), settings);
+		adi = new ADI(1, 1, W - 2, H * 2 / 3, attref, chw, chw, config->getConfig(), settings);
 		break;
 	case 1:
-		adi = new ADI(1, 1, W - 2, H - 2, attref, 2 * chw3, 2 * chw3, config->getConfig(), settings);
+		adi = new ADI(1, 1, W - 2, H - 2, attref, chw, chw, config->getConfig(), settings);
 		break;
 	default:
 		oapiWriteLog("[AttitudeIndicatorMFD] ERROR! Invalid mode flag. Defaulting.");
-		adi = new ADI(1, 1, W - 2, H - 2, attref, 2 * chw3, 2 * chw3, config->getConfig(), settings);
+		adi = new ADI(1, 1, W - 2, H - 2, attref, chw, chw, config->getConfig(), settings);
 		break;
 	}
 	attref->SetMode(settings->frm);
