@@ -151,6 +151,11 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	fs.os = length(vec);
 	v->GetRelativePos(body, vec);
 	fs.altitude = length(vec) - body_rad;
+#ifndef ORBITER2016
+	fs.altitudeGround = fs.altitude;
+#else
+	oapiGetAltitude(v->GetHandle(), ALTMODE_GROUND, &fs.altitudeGround);
+#endif
 
 	return navTypeChanged;
 }

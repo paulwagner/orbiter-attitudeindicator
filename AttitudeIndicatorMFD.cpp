@@ -777,7 +777,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				VECTOR3 relVel = tmul(m, fs.navTargetRelVel);
 
 				// Row 1
-				double alt = fs.altitude;
+				double alt = fs.altitudeGround;
 				double vspd = relVel.y;
 				WriteText(skp, cp1_x + chw3_i, iy, kw, "ALT", convertAltString(alt));
 				WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "VSPD", convertAltString(vspd));
