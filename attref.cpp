@@ -254,6 +254,16 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 
 // ==============================================================
 
+inline void offsetDir(VECTOR3 &vec) {
+	const double offs = 0.1;
+	for (int i = 0; i < 3; i++) {
+		if (abs(vec.data[i]) <= offs)
+			vec.data[i] = 1.0 / 10000000;
+		else if (vec.data[i] < 0) vec.data[i] += offs;
+		else vec.data[i] -= offs;
+	}
+}
+
 bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 {
 	if (!valid_tgteuler) {
@@ -272,6 +282,7 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 						oapiGetNavPos (hNav, &dir);
 						v->GetGlobalPos (sdir);
 
+						VECTOR3 relDir = dir - sdir;
 						// Correct docking port poosition in IDS mode
 						NAVDATA ndata;
 						oapiGetNavData(hNav, &ndata);
@@ -281,9 +292,17 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 							v->GetDockParams(vDh, vDpos, vDdir, vDrot);
 							GetVessel()->GlobalRot(vDpos, vDpos);
 							sdir += vDpos;
+							MATRIX3 vrotm;
+							v->GetRotationMatrix(vrotm);
+							VECTOR3 vesselDir = tmul(vrotm, dir - sdir);
+							offsetDir(vesselDir);
+							relDir = mul(vrotm, vesselDir);
 						}
 
-						dir = tmul(GetFrameRotMatrix(), unit(dir - sdir));
+						dir = tmul(GetFrameRotMatrix(), unit(relDir));
+						if (abs(relDir.x) <= 1.0 / 1000000 && abs(relDir.y) <= 1.0 / 1000000 && abs(relDir.z) <= 1.0 / 1000000) {
+							dir = _V(0, 0, 1); // When close, lock on target
+						}
 
 					} else {
 						v->GetGlobalVel (sdir);
