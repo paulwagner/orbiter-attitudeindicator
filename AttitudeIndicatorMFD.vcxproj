@@ -116,6 +116,7 @@
     <ClCompile Include="AttitudeIndicatorMFD.cpp" />
     <ClCompile Include="AttitudeReferenceADI.cpp" />
     <ClCompile Include="attref.cpp" />
+    <ClCompile Include="commons.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="imageloader.cpp" />
   </ItemGroup>

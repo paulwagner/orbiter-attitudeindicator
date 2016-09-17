@@ -45,6 +45,8 @@ typedef struct {
 	int navCnt;
 	double* navCrs;
 	DWORD navType;
+	VECTOR3 manRot;
+	bool hasManRot;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {
@@ -56,7 +58,9 @@ public:
   bool GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel);
+  bool GetManeuverDirections(VECTOR3 &man);
   bool GetReferenceName(char *string, int n);
+  void saveCurrentAttitude();
 
 private:
 	FLIGHTSTATUS fs;

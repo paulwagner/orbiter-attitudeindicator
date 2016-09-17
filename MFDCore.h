@@ -33,6 +33,8 @@ typedef struct _MFDSettings {
 	bool drawPerpendicular;
 	// 0 - No turn vectors; 1 - PRIs; 2 - Turn vectors on ball
 	int turnVectorMode;
+	bool hasManRot;
+	VECTOR3 manRot;
 } MFDSettings;
 
 #endif

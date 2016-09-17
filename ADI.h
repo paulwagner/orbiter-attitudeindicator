@@ -17,8 +17,8 @@ public:
 	virtual void DrawBall(oapi::Sketchpad* skp, double zoom);
 
 protected:
-	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penPerpendicular, *penTarget, *penIndicators;
-	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial, *brushPerpendicular, *brushTarget, *brushIndicators;
+	oapi::Pen* penWing, *penTurnVec, *penGrad, *penNormal, *penRadial, *penPerpendicular, *penTarget, *penIndicators, *penManeuver;
+	oapi::Brush* brushWing, *brushTurnVec, *brushGrad, *brushNormal, *brushRadial, *brushPerpendicular, *brushTarget, *brushIndicators, *brushManeuver;
 
 	void DrawWing(oapi::Sketchpad* skp);
 	void DrawTurnVector(oapi::Sketchpad* skp);

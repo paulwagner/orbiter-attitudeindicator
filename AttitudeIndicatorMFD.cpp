@@ -85,7 +85,10 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 		settings->drawPerpendicular = config->getConfig().startPerpendicular;
 		settings->turnVectorMode = config->getConfig().startTurnVectorMode;
 		settings->isValid = true;
+		settings->hasManRot = false;
 	}
+	attref->GetFlightStatus().hasManRot = settings->hasManRot;
+	attref->GetFlightStatus().manRot = settings->manRot;
 	chw = round((double)H / 20);
 	chw = min(chw,round((double)W / 20));
 	chw2 = chw / 2;
@@ -149,6 +152,7 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 	const VESSEL* v = attref->GetVessel();
 	DWORD navType = attref->GetFlightStatus().navType;
 	if (settings->frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
+	if (settings->frm <= 2 && bt == 10) return "ATT";
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v) && (bt == 8)) return "OB+";
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v) && (bt == 9)) return "OB-";
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return "REF";
@@ -185,6 +189,9 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 	if (settings->frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE)) mnu[6] = mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // No markers in surface NAV mode, or if no signal is tuned
 	if ((settings->mode == 1 || !(settings->frm == 3 || (settings->frm == 4 && SRFNAVTYPE(navType, v))))) mnu[10] = { 0, 0, 0 }; // SPD only in surface text mode
 	if (settings->frm != 4) mnu[11] = { 0, 0, 0 }; // NAV only in NAV mode
+	if (settings->frm <= 2){
+		mnu[10] = {"Mark attitude", 0, 'A'};
+	};
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v)) { mnu[8] = { "Increase OBS", 0, 'D' }; mnu[9] = { "Decrease OBS", 0, 'R' }; }
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL))  mnu[10] = { "Change reference system", 0, 'S' };
 	if (settings->frm == 3) mnu[11] = { "Change displayed data", 0, 'C' };
@@ -208,6 +215,7 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
 	if (settings->frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
+	if (settings->frm <= 2 && bt == 10) return ConsumeKeyBuffered(btkey[bt]);
 	if (settings->frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
 	if (settings->frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS/VTOL mode
@@ -274,6 +282,15 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_S:
 		if (settings->frm == 4 && (attref->GetFlightStatus().navType == TRANSMITTER_IDS || attref->GetFlightStatus().navType == TRANSMITTER_VTOL)) {
 			attref->ToggleDockRef();
+			return true;
+		}
+		if (settings->frm <= 2) {
+			if (attref->GetFlightStatus().hasManRot)
+				attref->GetFlightStatus().hasManRot = false;
+			else
+				attref->saveCurrentAttitude();
+			settings->hasManRot = attref->GetFlightStatus().hasManRot;
+			settings->manRot = attref->GetFlightStatus().manRot;
 			return true;
 		}
 		settings->speedMode = (settings->speedMode + 1) % speedCount;

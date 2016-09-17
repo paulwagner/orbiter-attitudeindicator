@@ -1,5 +1,6 @@
 #include "AttitudeReferenceADI.h"
 #include <string>
+#include "commons.h"
 
 AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeReference(vessel) {
 	fs.navCnt = vessel->GetNavCount();
@@ -13,6 +14,11 @@ AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeRefer
 
 AttitudeReferenceADI::~AttitudeReferenceADI() {
 	if (fs.navCrs) delete fs.navCrs;
+}
+
+void AttitudeReferenceADI::saveCurrentAttitude() {
+	fs.hasManRot = true;
+	GetVessel()->GetGlobalOrientation(fs.manRot);
 }
 
 bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
@@ -203,9 +209,19 @@ bool AttitudeReferenceADI::GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel)
 	return true;
 }
 
+bool AttitudeReferenceADI::GetManeuverDirections(VECTOR3 &man) {
+	if (!fs.hasManRot) return false;
+	man = _V(0, 0, 1);
+	MATRIX3 R;
+	getRotMatrix(fs.manRot, &R);
+	man = tmul(R, man); // Apply maneuver rotation
+	man = tmul(GetFrameRotMatrix(), man); // Apply frame rotation
+	return true;
+}
+
 void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
-	double sint = sin(euler.y), cost = cos(euler.y);
-	double sinp = sin(euler.z), cosp = cos(euler.z);
+	double sint = sin(euler.x), cost = cos(euler.x);
+	double sinp = sin(euler.y), cosp = cos(euler.y);
 	if (GetProjMode() == 0)
 		dir = _V(RAD*sinp*cost, RAD*sint, RAD*cosp*cost);
 	else

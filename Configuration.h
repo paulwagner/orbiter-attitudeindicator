@@ -16,6 +16,7 @@
 #define RADIAL RGB(9,254,239)
 #define PERPENDICULAR RGB(0,34,255)
 #define TARGET RGB(235,11,255)
+#define MANEUVER RGB(0,0,214)
 #define WING WHITE
 #define INDICATOR WHITE
 #define TURNVECTOR WHITE
@@ -43,6 +44,9 @@
 #define S_TARGET_R "targetR"
 #define S_TARGET_G "targetG"
 #define S_TARGET_B "targetB"
+#define S_MANEUVER_R "maneuverR"
+#define S_MANEUVER_G "maneuverG"
+#define S_MANEUVER_B "maneuverB"
 #define S_WING_R "wingR"
 #define S_WING_G "wingG"
 #define S_WING_B "wingB"
@@ -67,6 +71,7 @@ typedef struct {
 	DWORD radialColor;
 	DWORD perpendicularColor;
 	DWORD targetColor;
+	DWORD maneuverColor;
 	DWORD wingColor;
 	DWORD indicatorColor;
 	DWORD turnVecColor;
@@ -87,6 +92,8 @@ public:
   CONFIGURATION &getConfig();
 protected:
 	CONFIGURATION config;
+private:
+	bool readRGBFromConfig(FILEHANDLE fh, char* rs, char* gs, char* bs, DWORD& c);
 };
 
 #endif

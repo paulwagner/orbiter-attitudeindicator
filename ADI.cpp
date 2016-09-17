@@ -32,6 +32,7 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	penRadial = oapiCreatePen(1, 3, config.radialColor);
 	penPerpendicular = oapiCreatePen(1, 3, config.perpendicularColor);
 	penTarget = oapiCreatePen(1, 3, config.targetColor);
+	penManeuver = oapiCreatePen(1, 3, config.maneuverColor);
 	penIndicators = oapiCreatePen(1, 2, config.indicatorColor);
 	brushWing = oapiCreateBrush(config.wingColor);
 	brushTurnVec = oapiCreateBrush(config.turnVecColor);
@@ -40,6 +41,7 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	brushRadial = oapiCreateBrush(config.radialColor);
 	brushPerpendicular = oapiCreateBrush(config.perpendicularColor);
 	brushTarget = oapiCreateBrush(config.targetColor);
+	brushManeuver = oapiCreateBrush(config.maneuverColor);
 	brushIndicators = oapiCreateBrush(config.indicatorColor);
 
 	GLuint PixelFormat;
@@ -118,6 +120,7 @@ ADI::~ADI() {
 	oapiReleasePen(penRadial);
 	oapiReleasePen(penPerpendicular);
 	oapiReleasePen(penTarget);
+	oapiReleasePen(penManeuver);
 	oapiReleasePen(penIndicators);
 	oapiReleaseBrush(brushWing);
 	oapiReleaseBrush(brushTurnVec);
@@ -126,6 +129,7 @@ ADI::~ADI() {
 	oapiReleaseBrush(brushRadial);
 	oapiReleaseBrush(brushPerpendicular);
 	oapiReleaseBrush(brushTarget);
+	oapiReleaseBrush(brushManeuver);
 	oapiReleaseBrush(brushIndicators);
 	if (quad)
 		gluDeleteQuadric(quad);
@@ -379,7 +383,7 @@ void DrawArc(oapi::Sketchpad* skp, double x, double y, double r, double s, doubl
 void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
-	VECTOR3 pgd, nml, rad, pep, tgt;
+	VECTOR3 pgd, nml, rad, pep, tgt, man;
 	int frm = attref->GetMode();
 	double phi;
 	double x, y;
@@ -393,15 +397,49 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		attref->GetAirspeedDirection(pgd, nml, rad, pep); // Surface relative vector in LH/LN
 	else if (frm == 4 && fs.hasNavTarget)
 		attref->GetTargetDirections(tgt, pgd); // Target relative vector in NAV
-	
-	if (frm <= 1)
-		return; // No markers in ECL and EQU
+	if (frm <= 2)
+		attref->GetManeuverDirections(man);
 
-	double d = sin(45 * RAD);
 	int cx = cw23_i;
 	double cxd = cw23;
 	int cy = ch23_i;
 	double cyd = ch23;
+
+	// Maneuver marker
+	if (fs.hasManRot && frm <= 2) {
+		ProjectVector(unit(man), x, y, phi);
+		ix = (int)x, iy = (int)y;
+		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
+		skp->SetPen(penManeuver);
+		skp->SetBrush(brushManeuver);
+		if (abs(phi) <= phiF) {
+			double dx = sin(60 * RAD);
+			double dy = sin(30 * RAD);
+			int rcx = (int)round(cxd * dx);
+			int rcy = (int)round(cyd * dy);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Line(ix, iy - cy, ix, iy - 2 * cy);
+			skp->Line(ix + rcx, iy + rcy, ix + 2 * rcx, iy + 2 * rcy);
+			skp->Line(ix - rcx, iy + rcy, ix - 2 * rcx, iy + 2 * rcy);
+			skp->Line(ix, iy - 2 * cy, ix + cx, iy - 2 * cy);
+			skp->Line(ix, iy - 2 * cy, ix - cx, iy - 2 * cy);
+
+			int dcx = (int)round(cxd * sin(40 * RAD));
+			int dcy = (int)round(cyd * sin(50 * RAD));
+			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx + dcx, iy + 2 * rcy - dcy);
+			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx - dcx, iy + 2 * rcy + dcy);
+
+		}
+		else {
+			// No marker visible, draw direction arrow to maneuver node
+			DrawDirectionArrow(skp, manDir);
+		}
+	}
+
+	if (frm <= 1)
+		return; // No other markers in ECL and EQU
+
 	// Prograde
 	if (settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
 		ProjectVector(pgd, x, y, phi);
@@ -423,6 +461,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		ProjectVector(-pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		if (abs(phi) <= phiF) {
+			double d = sin(45 * RAD);
 			skp->SetPen(penGrad);
 			skp->SetBrush(NULL);
 			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
@@ -464,13 +503,15 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			ProjectVector(-tgt, x, y, phi);
 			ix = (int)x, iy = (int)y;
 			if (abs(phi) <= phiF) {
+				double dx = sin(60 * RAD);
+				double dy = cos(60 * RAD);
 				skp->SetPen(penTarget);
 				skp->SetBrush(brushTarget);
 				skp->Ellipse(ix - tx / 2, iy - ty / 2, ix + tx / 2, iy + ty / 2);
 				skp->SetBrush(NULL);
 				skp->Line(ix, iy + cy, ix, iy + 2 * cy);
-				skp->Line(ix + (int)round(cxd * d), iy - (int)round(cyd*d), ix + 2 * (int)round(cxd * d), iy - 2 * (int)round(cyd*d));
-				skp->Line(ix - (int)round(cxd * d), iy - (int)round(cyd*d), ix - 2 * (int)round(cxd * d), iy - 2 * (int)round(cyd*d));
+				skp->Line(ix + (int)round(cxd * dx), iy - (int)round(cyd*dy), ix + 2 * (int)round(cxd * dx), iy - 2 * (int)round(cyd*dy));
+				skp->Line(ix - (int)round(cxd * dx), iy - (int)round(cyd*dy), ix - 2 * (int)round(cxd * dx), iy - 2 * (int)round(cyd*dy));
 			}
 			else if (!tgtVisible){
 				// No marker visible, draw direction arrow to target
@@ -503,13 +544,11 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 				skp->Line(ix - (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale), ix + (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale));
 				skp->Line(ix - (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale), ix, iy - (int)round(cyd*crsScale));
 				skp->Line(ix, iy - (int)round(cyd*crsScale), ix + (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale));
-
 			}
 		}
 
 		return; // No normal/radial markers in NAV mode	
 	}
-
 
 	// Normal
 	if (settings->drawNormal && isnormal(length(pgd))){
