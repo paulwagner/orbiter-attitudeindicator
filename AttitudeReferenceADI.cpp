@@ -220,8 +220,8 @@ bool AttitudeReferenceADI::GetManeuverDirections(VECTOR3 &man) {
 }
 
 void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
-	double sint = sin(euler.x), cost = cos(euler.x);
-	double sinp = sin(euler.y), cosp = cos(euler.y);
+	double sint = sin(euler.y), cost = cos(euler.y);
+	double sinp = sin(euler.z), cosp = cos(euler.z);
 	if (GetProjMode() == 0)
 		dir = _V(RAD*sinp*cost, RAD*sint, RAD*cosp*cost);
 	else

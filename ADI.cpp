@@ -400,10 +400,10 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	if (frm <= 2)
 		attref->GetManeuverDirections(man);
 
-	int cx = cw2_i;
-	double cxd = cw / 2;
-	int cy = ch2_i;
-	double cyd = ch / 2;
+	int cx = cw23_i;
+	double cxd = cw23;
+	int cy = ch23_i;
+	double cyd = ch23;
 
 	// Prograde
 	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
