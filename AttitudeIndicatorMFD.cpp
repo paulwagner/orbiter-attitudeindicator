@@ -86,9 +86,10 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 		settings->turnVectorMode = config->getConfig().startTurnVectorMode;
 		settings->isValid = true;
 		settings->hasManRot = false;
+	} else {
+		attref->GetFlightStatus().hasManRot = settings->hasManRot;
+		attref->GetFlightStatus().manRot = settings->manRot;
 	}
-	attref->GetFlightStatus().hasManRot = settings->hasManRot;
-	attref->GetFlightStatus().manRot = settings->manRot;
 	chw = round((double)H / 20);
 	chw = min(chw,round((double)W / 20));
 	chw2 = chw / 2;
@@ -102,6 +103,9 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 {
 	TRACE("[AttitudeIndicatorMFD] Enter: _ddecl");
+	// Save persistent values of ADI reference class
+	settings->hasManRot = attref->GetFlightStatus().hasManRot;
+	settings->manRot = attref->GetFlightStatus().manRot;
 	// MFD cleanup code
 	delete (attref);
 	delete (adi);
@@ -289,8 +293,6 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 				attref->GetFlightStatus().hasManRot = false;
 			else
 				attref->saveCurrentAttitude();
-			settings->hasManRot = attref->GetFlightStatus().hasManRot;
-			settings->manRot = attref->GetFlightStatus().manRot;
 			return true;
 		}
 		settings->speedMode = (settings->speedMode + 1) % speedCount;

@@ -1,6 +1,8 @@
 #ifndef _MFDCORE_H_
 #define _MFDCORE_H_
 
+#include "Orbitersdk.h"
+
 #define DEFAULT_ZOOM 1.2
 #define DEFAULT_SPEED 0;
 #define DEFAULT_LHLN_DATA_MODE 0;

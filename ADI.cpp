@@ -400,48 +400,13 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	if (frm <= 2)
 		attref->GetManeuverDirections(man);
 
-	int cx = cw23_i;
-	double cxd = cw23;
-	int cy = ch23_i;
-	double cyd = ch23;
-
-	// Maneuver marker
-	if (fs.hasManRot && frm <= 2) {
-		ProjectVector(unit(man), x, y, phi);
-		ix = (int)x, iy = (int)y;
-		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
-		skp->SetPen(penManeuver);
-		skp->SetBrush(brushManeuver);
-		if (abs(phi) <= phiF) {
-			double dx = sin(60 * RAD);
-			double dy = sin(30 * RAD);
-			int rcx = (int)round(cxd * dx);
-			int rcy = (int)round(cyd * dy);
-			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-			skp->SetBrush(NULL);
-			skp->Line(ix, iy - cy, ix, iy - 2 * cy);
-			skp->Line(ix + rcx, iy + rcy, ix + 2 * rcx, iy + 2 * rcy);
-			skp->Line(ix - rcx, iy + rcy, ix - 2 * rcx, iy + 2 * rcy);
-			skp->Line(ix, iy - 2 * cy, ix + cx, iy - 2 * cy);
-			skp->Line(ix, iy - 2 * cy, ix - cx, iy - 2 * cy);
-
-			int dcx = (int)round(cxd * sin(40 * RAD));
-			int dcy = (int)round(cyd * sin(50 * RAD));
-			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx + dcx, iy + 2 * rcy - dcy);
-			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx - dcx, iy + 2 * rcy + dcy);
-
-		}
-		else {
-			// No marker visible, draw direction arrow to maneuver node
-			DrawDirectionArrow(skp, manDir);
-		}
-	}
-
-	if (frm <= 1)
-		return; // No other markers in ECL and EQU
+	int cx = cw2_i;
+	double cxd = cw / 2;
+	int cy = ch2_i;
+	double cyd = ch / 2;
 
 	// Prograde
-	if (settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
+	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		bool pgdVisible = false;
@@ -482,8 +447,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	if (frm == 4){
 		// Target marker
 		if (fs.hasNavTarget && isnormal(length(tgt)) && (!fs.docked || !attref->IsDockRef())){
-			int tx = cw3_i;
-			int ty = ch3_i;
+			sprintf(oapiDebugString(), "TOP");
+			int tx = (int)round(cxd / 2);
+			int ty = (int)round(cyd / 2);
 			ProjectVector(tgt, x, y, phi);
 			ix = (int)x, iy = (int)y;
 			bool tgtVisible = false;
@@ -551,7 +517,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Normal
-	if (settings->drawNormal && isnormal(length(pgd))){
+	if (frm > 1 && settings->drawNormal && isnormal(length(pgd))){
 		double dx = sin(60 * RAD);
 		double dy = sin(30 * RAD);
 		double nmlScale = 1.5;
@@ -599,7 +565,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Perpendicular out
-	if (settings->drawPerpendicular && isnormal(length(pgd))) {
+	if (frm > 1 && settings->drawPerpendicular && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double pepScale = 1.6;
@@ -641,7 +607,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Radial out
-	if (settings->drawRadial && isnormal(length(pgd))) {
+	if (frm > 1 && settings->drawRadial && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
 		double cd = cos(45 * RAD);
 		double radScale = 1.6;
@@ -680,6 +646,43 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->SetPen(penRadial);
 			skp->SetBrush(brushRadial);
 			DrawDirectionArrow(skp, radDir);
+		}
+	}
+
+	// Maneuver marker
+	if (fs.hasManRot && frm <= 2) {
+		ProjectVector(unit(man), x, y, phi);
+		ix = (int)x, iy = (int)y;
+		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
+		skp->SetPen(penManeuver);
+		skp->SetBrush(brushManeuver);
+		if (abs(phi) <= phiF) {
+			double dx = sin(60 * RAD);
+			double dy = sin(30 * RAD);
+			double _cxd = cxd * 2 / 3;
+			double _cyd = cyd * 2 / 3;
+			int _cx = (int)round(_cxd);
+			int _cy = (int)round(_cyd);
+			int rcx = (int)round(_cxd * dx);
+			int rcy = (int)round(_cyd * dy);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Line(ix, iy - _cy, ix, iy - 2 * _cy);
+			skp->Line(ix + rcx, iy + rcy, ix + 2 * rcx, iy + 2 * rcy);
+			skp->Line(ix - rcx, iy + rcy, ix - 2 * rcx, iy + 2 * rcy);
+			skp->Line(ix, iy - 2 * _cy, ix + (int)round(_cx / 2), iy - 2 * _cy);
+			skp->Line(ix, iy - 2 * _cy, ix - (int)round(_cx / 2), iy - 2 * _cy);
+
+			int dcx = (int)round(_cxd * sin(80 * RAD) / 2);
+			int dcy = (int)round(_cyd * sin(80 * RAD) / 2);
+			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx + dcx, iy + 2 * rcy - dcy);
+			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx - dcx, iy + 2 * rcy + dcy);
+			skp->Line(ix - 2 * rcx, iy + 2 * rcy, ix - 2 * rcx - dcx, iy + 2 * rcy - dcy);
+			skp->Line(ix - 2 * rcx, iy + 2 * rcy, ix - 2 * rcx + dcx, iy + 2 * rcy + dcy);
+		}
+		else {
+			// No marker visible, draw direction arrow to maneuver node
+			DrawDirectionArrow(skp, manDir);
 		}
 	}
 
