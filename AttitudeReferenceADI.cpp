@@ -7,6 +7,7 @@ AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeRefer
 	for (int i = 0; i < fs.navCnt; i++)
 		fs.navCrs[i] = 0;
 	fs.navType = TRANSMITTER_NONE;
+	prevGS = 0; prevIAS = 0; prevTAS = 0; prevOS = 0; prevAlt = 0;
 	PostStep(0, 0, 0);
 }
 
@@ -28,9 +29,6 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
 	fs.aoa = v->GetAOA();
-	VECTOR3 hspd;
-	v->GetHorizonAirspeedVector(hspd);
-	fs.vs = hspd.y;
 	fs.docked = (v->DockingStatus(0) == 1);
 	fs.ground = v->GroundContact();
 	oapiGetHeading(v->GetHandle(), &fs.heading);
@@ -156,6 +154,15 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 #else
 	oapiGetAltitude(v->GetHandle(), ALTMODE_GROUND, &fs.altitudeGround);
 #endif
+
+	if (simt - prevt > 0.1) {
+		fs.iasAcc = (fs.ias - prevIAS) / (simt - prevt); prevIAS = fs.ias;
+		fs.tasAcc = (fs.tas - prevTAS) / (simt - prevt); prevTAS = fs.tas;
+		fs.osAcc = (fs.os - prevOS) / (simt - prevt); prevOS = fs.os;
+		fs.gsAcc = (fs.gs - prevGS) / (simt - prevt); prevGS = fs.gs;
+		fs.vs = (fs.altitude - prevAlt) / (simt - prevt); prevAlt = fs.altitude;
+		prevt = simt;
+	}
 
 	return navTypeChanged;
 }

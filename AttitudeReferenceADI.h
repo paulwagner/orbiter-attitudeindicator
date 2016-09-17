@@ -22,6 +22,10 @@ typedef struct {
 	double os;
 	double ias;
 	double gs;
+	double tasAcc;
+	double osAcc;
+	double iasAcc;
+	double gsAcc;
 	double vs;
 	double apoapsis;
 	double periapsis;
@@ -57,6 +61,13 @@ public:
 private:
 	FLIGHTSTATUS fs;
 	void CalculateDirection(VECTOR3 euler, VECTOR3 &dir);
+
+	double prevIAS;
+	double prevTAS;
+	double prevGS;
+	double prevOS;
+	double prevAlt;
+	double prevt;
 
 };
 

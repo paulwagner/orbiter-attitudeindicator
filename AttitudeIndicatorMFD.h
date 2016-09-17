@@ -31,7 +31,7 @@ protected:
 	void CreateADI();
 	void DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height);
 private:
-	oapi::Pen *penBlue, *penGreen, *penGreen2, *penRed, *penWhite, *penBlack, *penYellow2;
+	oapi::Pen *penBlue, *penGreen, *penGreen2, *penRed, *penWhite, *penBlack, *penYellow2, *penYellow3;
 	oapi::Brush *brushBlue, *brushGreen, *brushGreen2, *brushRed, *brushWhite, *brushBlack, *brushYellow2;
 	MFDSettings* settings;
 

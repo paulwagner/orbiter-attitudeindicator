@@ -57,6 +57,7 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 	penWhite = oapiCreatePen(1, 1, WHITE);
 	penBlack = oapiCreatePen(1, 1, BLACK);
 	penYellow2 = oapiCreatePen(1, 1, YELLOW2);
+	penYellow3 = oapiCreatePen(1, 2, YELLOW2);
 	brushBlue = oapiCreateBrush(BLUE);
 	brushGreen = oapiCreateBrush(GREEN);
 	brushGreen2 = oapiCreateBrush(GREEN2);
@@ -109,6 +110,7 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	oapiReleasePen(penWhite);
 	oapiReleasePen(penBlack);
 	oapiReleasePen(penYellow2);
+	oapiReleasePen(penYellow3);
 	oapiReleaseBrush(brushBlue);
 	oapiReleaseBrush(brushGreen);
 	oapiReleaseBrush(brushGreen2);
@@ -401,6 +403,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 	int scale = GetScale((int)round((double)(y + height - cp1_y) / 15));
 	int cur_width = skp->GetTextWidth("00000", 5);
+	double acc;
 	if (settings->frm != 4 || SRFNAVTYPE(fs.navType, attref->GetVessel())) {
 		// Draw velocity
 		skp->SetPen(penBlue);
@@ -463,11 +466,47 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				}
 				else {
 					a -= scale;
-					stop = (ty >= y + height - chw4_i);
+					stop = (ty >= y + height + chw4_i);
 					ty += 1;
 				}
 			} while (!stop);
 		}
+
+		// Draw ACC
+		int th = skp->GetCharSize() & 0xFFFF;
+		switch (settings->speedMode) {
+		case 0:
+			acc = fs.gsAcc; break;
+		case 1:
+			acc = fs.tasAcc; break;
+		case 2:
+			acc = fs.iasAcc; break;
+		default:
+			acc = 0; break;
+		}
+		double aacc = abs(acc);
+		if (aacc >= 0.5) {
+			skp->SetPen(penYellow3);
+			double range = (double)(y + height - cp1_y - th) / 6.0;
+			double ld = max(min(log10(aacc) + 1, 3), 0);
+			int cx = cp1_x - 6;
+			int y1 = 0;
+			int y2 = mid_y;
+			if (acc > 0) {
+				y2 -= (int)round(ld*range);
+				if (ld >= 3) y2 += 8;
+				y1 = 8;
+			}
+			else {
+				y2 += (int)round(ld*range);
+				if (ld >= 3) y2 -= 8;
+				y1 = -8;
+			}
+			skp->Line(cx, mid_y, cx, y2);
+			skp->Line(cx - 4, y2 + y1, cx, y2);
+			skp->Line(cx + 4, y2 + y1, cx, y2);
+		}
+
 		// Draw current speed
 		double s_airspeed = airspeed - (spd_off * 100 * 1000);
 		if (s_airspeed < 10) {
@@ -488,7 +527,6 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->SetPen(penGreen);
 		skp->Line(cp1_x - chw54_i, mid_y, cp1_x, mid_y);
 		int tw = skp->GetTextWidth(s.c_str());
-		int th = skp->GetCharSize() & 0xFFFF;
 		int th23 = (int)round((double)th * 2 / 3);
 		int th2 = (int)round((double)th / 2);
 		skp->SetPen(penBlack);
@@ -553,7 +591,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				}
 				else {
 					a -= scale;
-					stop = (ty >= y + height - chw4_i);
+					stop = (ty >= y + height + chw4_i);
 					ty += 1;
 				}
 			} while (!stop);
@@ -577,6 +615,31 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			skp->Rectangle(cp2_x + chw_i, ty_apo - th, cp2_x + chw_i + tw, ty_apo + th);
 			skp->TextBox(cp2_x + chw_i, ty_apo - th, cp2_x + chw_i + tw, ty_apo + th, s.c_str(), s.length());
 		}
+
+		// Draw VS vector
+		double avs = abs(fs.vs);
+		if (avs >= 5) {
+			skp->SetPen(penYellow3);
+			th = skp->GetCharSize() & 0xFFFF;
+			double range = (double)(y + height - cp1_y - th) / 6.0;
+			double ld = max(min(log10(avs), 3), 0);
+			int cx = cp2_x + 6;
+			int y1 = 0;
+			int y2 = mid_y;
+			if (fs.vs > 0) {
+				y2 -= (int)round(ld*range);
+				if (ld >= 3) y2 += 8;
+				y1 = 8;
+			} else {
+				y2 += (int)round(ld*range);
+				if (ld >= 3) y2 -= 8;
+				y1 = -8;
+			}
+			skp->Line(cx, mid_y, cx, y2);
+			skp->Line(cx - 4, y2 + y1, cx, y2);
+			skp->Line(cx + 4, y2 + y1, cx, y2);
+		}
+
 		// Draw current altitude
 		double s_altitude = altitude - ((INT64)alt_off * 100 * 1000 * 1000);
 		if (s_altitude < 100 * 1000) {
@@ -614,9 +677,12 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->SetBrush(brushBlack);
 		skp->SetPen(penBlack);
 		skp->Rectangle(x, y, x + width, cp1_y);
-		skp->Rectangle(x, y + height - th, x + width, y + height + 4);
+		skp->Rectangle(x, y + height - chw4_i, x + width, y + height + 8);
 		skp->SetBrush(NULL);
 		if (alt_off > 0) {
+			skp->SetBrush(brushBlack);
+			skp->Rectangle(x, y + height - th, cp1_x + 4, y + height + 8);
+			skp->SetBrush(NULL);
 			s = "+";
 			s.append(std::to_string((double)alt_off / 10));
 			s = s.substr(0, s.find(".") + 2);
@@ -625,6 +691,9 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			skp->Text(x + width - tw, y + height - th, s.c_str(), s.length());
 		}
 		if (spd_off > 0) {
+			skp->SetBrush(brushBlack);
+			skp->Rectangle(cp2_x - 4, y + height - th, x + width, y + height + 8);
+			skp->SetBrush(NULL);
 			s = "+";
 			s.append(std::to_string((double)spd_off / 10));
 			s = s.substr(0, s.find(".") + 2);
@@ -862,7 +931,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 			// Row 3
 			iy += (chw3_i + th);
-			WriteText(skp, cp1_x + chw3_i, iy, kw, "DNP", convertAltString(fs.dnp));
+			WriteText(skp, cp1_x + chw3_i, iy, kw, "ACC", convertAltString(acc));
 			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "VS", convertAltString(fs.vs));
 
 			// Row 4
