@@ -653,7 +653,6 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 
 	// Maneuver marker
 	if (fs.hasManRot && frm <= 2) {
-		sprintf(oapiDebugString(), "x: %f, y: %f, z: %f", man.x, man.y, man.z);
 		ProjectVector(man, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
