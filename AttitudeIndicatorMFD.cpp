@@ -8,6 +8,7 @@
 #include <sstream>
 #include "Configuration.h"
 #include "commons.h"
+#include "AttitudeRetrieval.h"
 
 #define MFDCOUNT 10
 #define SRFNAVTYPE(x, v) ((x == TRANSMITTER_NONE && v->GetAtmRef() != 0) ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
@@ -157,6 +158,8 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 	DWORD navType = attref->GetFlightStatus().navType;
 	if (settings->frm <= 1 && (bt >= 6 && bt < 10)) return ""; // No markers in ECL and EQU
 	if (settings->frm <= 2 && bt == 10) return "ATT";
+	if (AttitudeRetrieval::isSupported())
+		if (settings->frm <= 2 && bt == 11) return "GET";
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v) && (bt == 8)) return "OB+";
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v) && (bt == 9)) return "OB-";
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return "REF";
@@ -194,7 +197,9 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 	if ((settings->mode == 1 || !(settings->frm == 3 || (settings->frm == 4 && SRFNAVTYPE(navType, v))))) mnu[10] = { 0, 0, 0 }; // SPD only in surface text mode
 	if (settings->frm != 4) mnu[11] = { 0, 0, 0 }; // NAV only in NAV mode
 	if (settings->frm <= 2){
-		mnu[10] = {"Mark attitude", 0, 'A'};
+		mnu[10] = {"Mark current attitude", 0, 'A'};
+		if (AttitudeRetrieval::isSupported())
+			mnu[11] = { "Get attitude", "from TransX", 'G' };
 	};
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v)) { mnu[8] = { "Increase OBS", 0, 'D' }; mnu[9] = { "Decrease OBS", 0, 'R' }; }
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL))  mnu[10] = { "Change reference system", 0, 'S' };
@@ -219,7 +224,7 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 
 	if (!(event & PANEL_MOUSE_LBDOWN)) return false;
 	if (settings->frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
-	if (settings->frm <= 2 && bt == 10) return ConsumeKeyBuffered(btkey[bt]);
+	if (settings->frm <= 2 && (bt == 10 || bt == 11)) return ConsumeKeyBuffered(btkey[bt]);
 	if (settings->frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
 	if (settings->frm == 4 && (SRFNAVTYPE(navType, v) || navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return 0; // No markers in surface NAV mode
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS/VTOL mode
@@ -301,6 +306,11 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		if (settings->frm == 3) {
 			// DAT button in LHLN mode
 			settings->lhlnDataMode = (settings->lhlnDataMode + 1) % lhlnDataCount;
+			return true;
+		}
+		if (settings->frm <= 2 && AttitudeRetrieval::isSupported()){
+			// GET button in ECL,EQU,OVOM
+			attref->getExternalAttitude();
 			return true;
 		}
 		int nc = attref->GetVessel()->GetNavCount();

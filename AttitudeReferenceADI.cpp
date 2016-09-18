@@ -1,6 +1,7 @@
 #include "AttitudeReferenceADI.h"
 #include <string>
 #include "commons.h"
+#include "AttitudeRetrieval.h"
 
 AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeReference(vessel) {
 	fs.navCnt = vessel->GetNavCount();
@@ -19,6 +20,16 @@ AttitudeReferenceADI::~AttitudeReferenceADI() {
 void AttitudeReferenceADI::saveCurrentAttitude() {
 	fs.hasManRot = true;
 	GetVessel()->GetGlobalOrientation(fs.manRot);
+}
+
+bool AttitudeReferenceADI::getExternalAttitude() {
+	VECTOR3 globRot;
+	fs.hasManRot = false;
+	if (AttitudeRetrieval::isSupported() && AttitudeRetrieval::getExternalAttitude(globRot)) {
+		fs.hasManRot = true;
+		fs.manRot = globRot;
+	}
+	return fs.hasManRot;
 }
 
 bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){

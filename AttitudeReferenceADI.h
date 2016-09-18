@@ -61,6 +61,7 @@ public:
   bool GetManeuverDirections(VECTOR3 &man);
   bool GetReferenceName(char *string, int n);
   void saveCurrentAttitude();
+  bool getExternalAttitude();
 
 private:
 	FLIGHTSTATUS fs;
