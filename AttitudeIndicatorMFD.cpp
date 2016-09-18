@@ -700,7 +700,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->SetBrush(NULL);
 		if (alt_off > 0) {
 			skp->SetBrush(brushBlack);
-			skp->Rectangle(x, y + height - th, cp1_x + 4, y + height + 8);
+			skp->Rectangle(cp2_x - 4, y + height - th, x + width, y + height + 8);
 			skp->SetBrush(NULL);
 			s = "+";
 			s.append(std::to_string((double)alt_off / 10));
@@ -711,7 +711,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		}
 		if (spd_off > 0) {
 			skp->SetBrush(brushBlack);
-			skp->Rectangle(cp2_x - 4, y + height - th, x + width, y + height + 8);
+			skp->Rectangle(x, y + height - th, cp1_x + 4, y + height + 8);
 			skp->SetBrush(NULL);
 			s = "+";
 			s.append(std::to_string((double)spd_off / 10));

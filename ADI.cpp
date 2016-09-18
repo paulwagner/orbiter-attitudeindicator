@@ -25,15 +25,17 @@ ADI::ADI(int x, int y, int width, int height, AttitudeReferenceADI* attref, doub
 	this->ch23 = ch * 2 / 3;
 	this->ch23_i = (int)round(ch23);
 
-	penWing = oapiCreatePen(1, 3, config.wingColor);
-	penTurnVec = oapiCreatePen(1, 2, config.turnVecColor);
-	penGrad = oapiCreatePen(1, 3, config.progradeColor);
-	penNormal = oapiCreatePen(1, 3, config.normalColor);
-	penRadial = oapiCreatePen(1, 3, config.radialColor);
-	penPerpendicular = oapiCreatePen(1, 3, config.perpendicularColor);
-	penTarget = oapiCreatePen(1, 3, config.targetColor);
-	penManeuver = oapiCreatePen(1, 3, config.maneuverColor);
-	penIndicators = oapiCreatePen(1, 2, config.indicatorColor);
+	int p1 = max((int)round(cw / 6),1);
+	int p2 = max((int)round(cw / 8), 1);
+	penWing = oapiCreatePen(1, p1, config.wingColor);
+	penTurnVec = oapiCreatePen(1, p2, config.turnVecColor);
+	penGrad = oapiCreatePen(1, p1, config.progradeColor);
+	penNormal = oapiCreatePen(1, p1, config.normalColor);
+	penRadial = oapiCreatePen(1, p1, config.radialColor);
+	penPerpendicular = oapiCreatePen(1, p1, config.perpendicularColor);
+	penTarget = oapiCreatePen(1, p1, config.targetColor);
+	penManeuver = oapiCreatePen(1, p1, config.maneuverColor);
+	penIndicators = oapiCreatePen(1, p2, config.indicatorColor);
 	brushWing = oapiCreateBrush(config.wingColor);
 	brushTurnVec = oapiCreateBrush(config.turnVecColor);
 	brushGrad = oapiCreateBrush(config.progradeColor);
@@ -405,49 +407,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	int cy = ch23_i;
 	double cyd = ch23;
 
-	// Prograde
-	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
-		ProjectVector(pgd, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		bool pgdVisible = false;
-		oapi::IVECTOR2 pgdDir; pgdDir.x = ix; pgdDir.y = iy;
-		if (abs(phi) <= phiF) {
-			pgdVisible = true;
-			skp->SetPen(penGrad);
-			skp->SetBrush(brushGrad);
-			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-			skp->SetBrush(NULL);
-			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
-			skp->Line(ix, iy - cy, ix, iy - 2 * cy);
-			skp->Line(ix + cx, iy, ix + 2 * cx, iy);
-			skp->Line(ix - cx, iy, ix - 2 * cx, iy);
-		}
-		// Retrograde
-		ProjectVector(-pgd, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		if (abs(phi) <= phiF) {
-			double d = sin(45 * RAD);
-			skp->SetPen(penGrad);
-			skp->SetBrush(NULL);
-			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
-			skp->Line(ix, iy - cy, ix, iy - 2 * cy);
-			skp->Line(ix + cx, iy, ix + 2 * cx, iy);
-			skp->Line(ix - cx, iy, ix - 2 * cx, iy);
-			skp->Line(ix - (int)round(cxd * d), iy - (int)round(cyd * d), ix + (int)round(cxd * d), iy + (int)round(cyd * d));
-			skp->Line(ix - (int)round(cxd * d), iy + (int)round(cyd * d), ix + (int)round(cxd * d), iy - (int)round(cyd * d));
-		} else if (!pgdVisible){
-			// No marker visible, draw direction arrow to prograde
-			skp->SetPen(penGrad);
-			skp->SetBrush(brushGrad);
-			DrawDirectionArrow(skp, pgdDir);
-		}
-
-	}
-
 	if (frm == 4){
 		// Target marker
 		if (fs.hasNavTarget && isnormal(length(tgt)) && (!fs.docked || !attref->IsDockRef())){
-			sprintf(oapiDebugString(), "TOP");
 			int tx = (int)round(cxd / 2);
 			int ty = (int)round(cyd / 2);
 			ProjectVector(tgt, x, y, phi);
@@ -516,6 +478,45 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		return; // No normal/radial markers in NAV mode	
 	}
 
+	// Prograde
+	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
+		ProjectVector(pgd, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		bool pgdVisible = false;
+		oapi::IVECTOR2 pgdDir; pgdDir.x = ix; pgdDir.y = iy;
+		if (abs(phi) <= phiF) {
+			pgdVisible = true;
+			skp->SetPen(penGrad);
+			skp->SetBrush(brushGrad);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
+			skp->Line(ix, iy - cy, ix, iy - 2 * cy);
+			skp->Line(ix + cx, iy, ix + 2 * cx, iy);
+			skp->Line(ix - cx, iy, ix - 2 * cx, iy);
+		}
+		// Retrograde
+		ProjectVector(-pgd, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			double d = sin(45 * RAD);
+			skp->SetPen(penGrad);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
+			skp->Line(ix, iy - cy, ix, iy - 2 * cy);
+			skp->Line(ix + cx, iy, ix + 2 * cx, iy);
+			skp->Line(ix - cx, iy, ix - 2 * cx, iy);
+			skp->Line(ix - (int)round(cxd * d), iy - (int)round(cyd * d), ix + (int)round(cxd * d), iy + (int)round(cyd * d));
+			skp->Line(ix - (int)round(cxd * d), iy + (int)round(cyd * d), ix + (int)round(cxd * d), iy - (int)round(cyd * d));
+		}
+		else if (!pgdVisible){
+			// No marker visible, draw direction arrow to prograde
+			skp->SetPen(penGrad);
+			skp->SetBrush(brushGrad);
+			DrawDirectionArrow(skp, pgdDir);
+		}
+	}
+
 	// Normal
 	if (frm > 1 && settings->drawNormal && isnormal(length(pgd))){
 		double dx = sin(60 * RAD);
@@ -564,6 +565,49 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 	}
 
+	// Radial out
+	if (frm > 1 && settings->drawRadial && isnormal(length(pgd))) {
+		double sd = sin(45 * RAD);
+		double cd = cos(45 * RAD);
+		double radScale = 1.6;
+		ProjectVector(rad, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		bool radVisible = false;
+		oapi::IVECTOR2 radDir; radDir.x = ix; radDir.y = iy;
+		if (abs(phi) <= phiF) {
+			radVisible = true;
+			skp->SetPen(penRadial);
+			skp->SetBrush(brushRadial);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
+			skp->Line(ix + (int)round(cxd*cd), iy + (int)round(cyd*sd), ix + (int)round(radScale * cxd*cd), iy + (int)round(radScale * cyd*sd));
+			skp->Line(ix + (int)round(cxd*cd), iy - (int)round(cyd*sd), ix + (int)round(radScale * cxd*cd), iy - (int)round(radScale * cyd*sd));
+			skp->Line(ix - (int)round(cxd*cd), iy + (int)round(cyd*sd), ix - (int)round(radScale * cxd*cd), iy + (int)round(radScale * cyd*sd));
+			skp->Line(ix - (int)round(cxd*cd), iy - (int)round(cyd*sd), ix - (int)round(radScale * cxd*cd), iy - (int)round(radScale * cyd*sd));
+		}
+		// Radial in
+		ProjectVector(-rad, x, y, phi);
+		ix = (int)x, iy = (int)y;
+		if (abs(phi) <= phiF) {
+			skp->SetPen(penRadial);
+			skp->SetBrush(brushRadial);
+			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
+			skp->SetBrush(NULL);
+			skp->Ellipse(ix - cx, iy - cy, ix + cx, iy + cy);
+			skp->Line(ix + (int)round(cxd*cd), iy + (int)round(cyd*sd), ix + (int)round((2 - radScale) * cxd*cd), iy + (int)round((2 - radScale) * cyd*sd));
+			skp->Line(ix + (int)round(cxd*cd), iy - (int)round(cyd*sd), ix + (int)round((2 - radScale) * cxd*cd), iy - (int)round((2 - radScale) * cyd*sd));
+			skp->Line(ix - (int)round(cxd*cd), iy + (int)round(cyd*sd), ix - (int)round((2 - radScale) * cxd*cd), iy + (int)round((2 - radScale) * cyd*sd));
+			skp->Line(ix - (int)round(cxd*cd), iy - (int)round(cyd*sd), ix - (int)round((2 - radScale) * cxd*cd), iy - (int)round((2 - radScale) * cyd*sd));
+		}
+		else if (!radVisible){
+			// No marker visible, draw direction arrow to radial
+			skp->SetPen(penRadial);
+			skp->SetBrush(brushRadial);
+			DrawDirectionArrow(skp, radDir);
+		}
+	}
+
 	// Perpendicular out
 	if (frm > 1 && settings->drawPerpendicular && isnormal(length(pgd))) {
 		double sd = sin(45 * RAD);
@@ -598,7 +642,8 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Line(ix + (int)round(cxd*cd), iy - (int)round(cyd*sd), ix + (int)round((2 - pepScale) * cxd*cd), iy - (int)round((2 - pepScale) * cyd*sd));
 			skp->Line(ix - (int)round(cxd*cd), iy + (int)round(cyd*sd), ix - (int)round((2 - pepScale) * cxd*cd), iy + (int)round((2 - pepScale) * cyd*sd));
 			skp->Line(ix - (int)round(cxd*cd), iy - (int)round(cyd*sd), ix - (int)round((2 - pepScale) * cxd*cd), iy - (int)round((2 - pepScale) * cyd*sd));
-		} else if (!pepVisible){
+		}
+		else if (!pepVisible){
 			// No marker visible, draw direction arrow to perpendicular
 			skp->SetPen(penPerpendicular);
 			skp->SetBrush(brushPerpendicular);
@@ -606,52 +651,10 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		}
 	}
 
-	// Radial out
-	if (frm > 1 && settings->drawRadial && isnormal(length(pgd))) {
-		double sd = sin(45 * RAD);
-		double cd = cos(45 * RAD);
-		double radScale = 1.6;
-		ProjectVector(rad, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		bool radVisible = false;
-		oapi::IVECTOR2 radDir; radDir.x = ix; radDir.y = iy;
-		if (abs(phi) <= phiF) {
-			radVisible = true;
-			skp->SetPen(penRadial);
-			skp->SetBrush(brushRadial);
-			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-			skp->SetBrush(NULL);
-			// TODO: Think of another marker symbol for radial
-			skp->Rectangle(ix - cx, iy - cy, ix + cx, iy + cx);
-			skp->Line(ix, iy + cy, ix, iy + (int)(2 * cy));
-			skp->Line(ix, iy - cy, ix, iy - (int)(2 * cy));
-			skp->Line(ix + cx, iy, ix + (int)(2 * cy), iy);
-			skp->Line(ix - cx, iy, ix - (int)(2 * cy), iy);
-		}
-		// Radial in
-		ProjectVector(-rad, x, y, phi);
-		ix = (int)x, iy = (int)y;
-		if (abs(phi) <= phiF) {
-			skp->SetPen(penRadial);
-			skp->SetBrush(brushRadial);
-			skp->Ellipse(ix - 1, iy - 1, ix + 1, iy + 1);
-			skp->SetBrush(NULL);
-			skp->Rectangle(ix - cx, iy - cy, ix + cx, iy + cy);
-			skp->Line(ix, iy + cy, ix, iy + (int)round(cyd / 2));
-			skp->Line(ix, iy - cy, ix, iy - (int)round(cyd / 2));
-			skp->Line(ix + cx, iy, ix + (int)round(cyd / 2), iy);
-			skp->Line(ix - cx, iy, ix - (int)round(cyd / 2), iy);
-		} else if (!radVisible){
-			// No marker visible, draw direction arrow to radial
-			skp->SetPen(penRadial);
-			skp->SetBrush(brushRadial);
-			DrawDirectionArrow(skp, radDir);
-		}
-	}
-
 	// Maneuver marker
 	if (fs.hasManRot && frm <= 2) {
-		ProjectVector(unit(man), x, y, phi);
+		sprintf(oapiDebugString(), "x: %f, y: %f, z: %f", man.x, man.y, man.z);
+		ProjectVector(man, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
 		skp->SetPen(penManeuver);
@@ -670,11 +673,11 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			skp->Line(ix, iy - _cy, ix, iy - 2 * _cy);
 			skp->Line(ix + rcx, iy + rcy, ix + 2 * rcx, iy + 2 * rcy);
 			skp->Line(ix - rcx, iy + rcy, ix - 2 * rcx, iy + 2 * rcy);
-			skp->Line(ix, iy - 2 * _cy, ix + (int)round(_cx / 2), iy - 2 * _cy);
-			skp->Line(ix, iy - 2 * _cy, ix - (int)round(_cx / 2), iy - 2 * _cy);
+			skp->Line(ix, iy - 2 * _cy, ix + (int)round(_cx / 1.5), iy - 2 * _cy);
+			skp->Line(ix, iy - 2 * _cy, ix - (int)round(_cx / 1.5), iy - 2 * _cy);
 
-			int dcx = (int)round(_cxd * sin(80 * RAD) / 2);
-			int dcy = (int)round(_cyd * sin(80 * RAD) / 2);
+			int dcx = (int)round(_cxd * sin(45 * RAD) / 1.5);
+			int dcy = (int)round(_cyd * cos(45 * RAD) / 1.5);
 			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx + dcx, iy + 2 * rcy - dcy);
 			skp->Line(ix + 2 * rcx, iy + 2 * rcy, ix + 2 * rcx - dcx, iy + 2 * rcy + dcy);
 			skp->Line(ix - 2 * rcx, iy + 2 * rcy, ix - 2 * rcx - dcx, iy + 2 * rcy - dcy);
