@@ -67,7 +67,16 @@ In \cref{fig:overview} the MFD is shown in text mode in the LH/LN frame.
 When ECL is selected as frame of reference, the ADI ball shows the current attitude with respect to the ecliptic frame.
 When EQU is selected, the frame of reference is the equatorial plane of the currently orbited body.
 If the MFD is in text mode, the displayed data is with reference to the current main gravity source acting on the vessel.
-In both ECL and EQU mode, no additional markers are available.
+In both ECL and EQU mode only the maneuver marker is available, which can be set by pressing the ATT button.
+
+\renewcommand{\arraystretch}{2.7}
+\begin{center}
+\begin{tabular}{ |c  c | }
+  \hline
+  Maneuver Marker & \includegraphics[scale=.5]{maneuver.png} \\ \hline
+\end{tabular}
+\end{center}
+
 
 \section{OV/OM}
 The OV/OM (orbital velocity/orbital momentum) frame of reference rotates the ADI ball to show the current orbit.
@@ -92,7 +101,7 @@ In text mode, the reference for the displayed data is always the current main gr
 \section{LH/LN}
 The LH/LN (local horizon/local north) frame of reference rotates the ADI ball to display the vessel's current attitude with respect to the planet horizon.
 In this mode, the ball shows the same heading as the surface MFD.
-As with OV/OM the five marker pairs are shown on the ball, although now with respect to the planet surface instead of the orbital plane.
+As with OV/OM the four marker pairs are shown on the ball, although now with respect to the planet surface instead of the orbital plane.
 When in text mode, the ball uses the nearest planetary body as reference for the displayed data.
 
 \section{NAV}
@@ -140,7 +149,7 @@ In this frame, the ADI ball's horizon shows the correct rotation angle, so if th
 Similarly, the heading indicates the deviation from the correct approach direction to the target docking port.
 If the vessel faces north, it is aligned with the target docking port.
 Note that when an IDS signal is received, the ball can be switched between two different frames of reference using the REF button on the right side.
-In the VESSEL frame, the ball shows the current relative attitude with respect to the vessel's center, while in DOCKPORT frame, the ball uses a coordinate system centered at vessel's docking port.
+In the VESSEL frame, the ball shows the current relative attitude with respect to the vessel's center, while in DOCK frame, the ball uses a coordinate system centered at vessel's docking port.
 This is especially handy if the docking port is not aligned with the vessel's nose (like in the Space Shuttle).
 
 In both frames the target marker shows the direction to the target docking port, while the prograde/retrograde markers show the current velocity vector relative to the target.
@@ -192,12 +201,15 @@ The colors are specified in RGB by using one configuration value of range 0-255 
    perpendicularR & 9 & \multirow{3}{*}{Perpendicular in/out Marker Color} \\
    perpendicularG & 254 &  \\
    perpendicularB & 239 &  \\ \hline
-   radialR & 0 & \multirow{3}{*}{Radial in/out Marker Color} \\
-   radialG & 34 &  \\
-   radialB & 255 &  \\ \hline
+   radialR & 243 & \multirow{3}{*}{Radial in/out Marker Color} \\
+   radialG & 27 &  \\
+   radialB & 32 &  \\ \hline
    targetR & 235 & \multirow{3}{*}{Target Marker Color} \\
    targetG & 11 &  \\
    targetB & 255 &  \\ \hline
+   maneuverR & 0 & \multirow{3}{*}{Maneuver Marker Color} \\
+   maneuverG & 0 &  \\
+   maneuverB & 214 &  \\ \hline
    wingR & 0 & \multirow{3}{*}{Wing/Dockingport Color} \\
    wingG & 0 &  \\
    wingB & 0 &  \\ \hline
@@ -210,6 +222,7 @@ The colors are specified in RGB by using one configuration value of range 0-255 
 \end{tabular}
 \end{center}
 
+\clearpage
 \section{Default Settings}
 Some configuration values can be used to determine the default settings to be used by the ADI ball when a new instance is created.
 \begin{center}
@@ -219,12 +232,12 @@ Some configuration values can be used to determine the default settings to be us
    startPrograde & TRUE & Start with prograde/retrograde marker enabled \\ \hline
    startNormal & TRUE & Start with normal/antinormal marker enabled \\ \hline
    startPerpendicular & TRUE & Start with perpendicular in/out marker enabled \\ \hline
-   startRadial & TRUE & Start with radial in/out marker enabled \\ \hline
+   startRadial & FALSE & Start with radial in/out marker enabled \\ \hline
    \multirow{2}{*}{startTurnVectorMode} & \multirow{2}{*}{0} & Start with turn rate indicators disabled(0),\\
     &  & as bar indicators (1) or overlay turn vector (2) \\ \hline
    \multirow{2}{*}{startMode} & \multirow{2}{*}{0} & Start in text mode(0),\\
     &  & Start in no-text mode(1) \\ \hline
-   \multirow{2}{*}{startFrame} & \multirow{2}{*}{0} & Start in ECL(0), in EQU(1)\\
+   \multirow{2}{*}{startFrame} & \multirow{2}{*}{2} & Start in ECL(0), in EQU(1)\\
     &  & in OV/OM(2), in LH/LN(3) or in NAV(4), \\ \hline
 \end{tabular}
 \end{center}
@@ -247,9 +260,12 @@ The following abbreviations are used for the displayed parameters in text mode.
    PTCH & Pitch (deg) & LH/LN,VOR,ILS,VTOL \\ \hline
    BNK & Bank (deg) & LH/LN,VOR,ILS,VTOL \\ \hline
    AoA & Angle of attack (deg) & LH/LN \\ \hline
+   HDG & Heading (deg) & LH/LN,ILS,VOR,VTOL \\ \hline
+   ACC & Acceleration ($\frac{m}{s^2}$) & LH/LN \\ \hline
    VS & Vertical speed ($\frac{m}{s}$) & LH/LN \\ \hline
-   STP & Static pressure (Pa) & LH/LN \\ \hline
-   DNS & Density ($\frac{kg}{m^3}$) & LH/LN \\ \hline
+   %STP & Static pressure (Pa) & n/a \\ \hline
+   %DNP & Dynamic pressure (Pa) & n/a \\ \hline
+   %DNS & Density ($\frac{kg}{m^3}$) & n/a \\ \hline
    Lon & Longitude (deg) & LH/LN,VOR,ILS \\ \hline
    Lat & Latitude (deg) & LH/LN,VOR,ILS \\ \hline
    CRS & Course marker (deg) & VOR,ILS \\ \hline
@@ -259,7 +275,6 @@ The following abbreviations are used for the displayed parameters in text mode.
    ALT & Altitude (m) & VTOL \\ \hline
    VSPD & Vertical speed ($\frac{m}{s}$) & VTOL \\ \hline
    HSPD & Horizontal speed ($\frac{m}{s}$) & VTOL \\ \hline
-   HDG & Heading (deg) & VTOL \\ \hline
    DIR & Direction of base (deg) & VTOL \\ \hline
 \end{tabular}
 \end{center}
