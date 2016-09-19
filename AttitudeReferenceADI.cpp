@@ -9,7 +9,7 @@ AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeRefer
 	for (int i = 0; i < fs.navCnt; i++)
 		fs.navCrs[i] = 0;
 	fs.navType = TRANSMITTER_NONE;
-	prevGS = 0; prevIAS = 0; prevTAS = 0; prevOS = 0; prevAlt = 0;
+	prevGS = 0; prevIAS = 0; prevTAS = 0; prevOS = 0; prevAlt = 0; prevt = 0;
 	PostStep(0, 0, 0);
 }
 
