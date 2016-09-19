@@ -467,10 +467,10 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			airspeed = 0;
 		}
 		int spd_off = (int)(airspeed / (100 * 1000));  // in 100k m/s
-		int rspd = (int)(round(airspeed * 100 / (double)scale) * (double)scale);
+		long long rspd = (long long)(round(airspeed * 100 / (double)scale) * (double)scale);
 		int mid_y = cp1_y + (y + height - cp1_y) / 2;
 		for (int k = 0; k < 2; k++) {
-			int a = rspd - k * scale;
+			long long a = rspd - k * scale;
 			int ty = mid_y + k;
 			bool stop = true;
 			do {
@@ -481,7 +481,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetTextColor(WHITE);
 				if (a % 10000 == 0) {
 					skp->Line(cp1_x - chw_i, ty, cp1_x, ty);
-					s = std::to_string((int)(a / 100) - spd_off * (100 * 1000));
+					s = std::to_string((int)((a / 100) - spd_off * (100 * 1000)));
 					int n = 5 - s.length();
 					if (n < 0) n = 0;
 					s.insert(0, n, '0');
