@@ -595,19 +595,19 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			int ty = mid_y + k;
 			bool stop = true;
 			do {
-				if (a < 0)
-					break;
 				skp->SetPen(penWhite);
 				skp->SetBrush(brushWhite);
 				skp->SetTextColor(WHITE);
 				if (a % 10000 == 0) {
 					skp->Line(cp2_x, ty, cp2_x + chw_i, ty);
-					s = std::to_string((a / 10000) - (INT64)(alt_off * (100 * 1000)));
-					int n = 5 - s.length();
-					if (n < 0) n = 0;
-					s.insert(0, n, '0');
-					int th = (int)round((double)(skp->GetCharSize() & 0xFFFF) / 2);
-					skp->Text(cp2_x + chw54_i, ty - th, s.c_str(), s.length());
+					if (a >= 0) {
+						s = std::to_string((a / 10000) - (INT64)(alt_off * (100 * 1000)));
+						int n = 5 - s.length();
+						if (n < 0) n = 0;
+						s.insert(0, n, '0');
+						int th = (int)round((double)(skp->GetCharSize() & 0xFFFF) / 2);
+						skp->Text(cp2_x + chw54_i, ty - th, s.c_str(), s.length());
+					}
 				}
 				else if (a % 5000 == 0) {
 					skp->Line(cp2_x, ty, cp2_x + chw2_i, ty);
