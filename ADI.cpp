@@ -474,12 +474,11 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 				skp->Line(ix, iy - (int)round(cyd*crsScale), ix + (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale));
 			}
 		}
-
-		return; // No normal/radial markers in NAV mode	
 	}
 
 	// Prograde
-	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL))) && isnormal(length(pgd))) {
+	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL) && !fs.docked))
+		&& isnormal(length(pgd))) {
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		bool pgdVisible = false;
@@ -516,6 +515,9 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			DrawDirectionArrow(skp, pgdDir);
 		}
 	}
+
+	if (frm == 4)
+		return; // No normal/radial/perpendicular/maneuver markers in NAV mode
 
 	// Normal
 	if (frm > 1 && settings->drawNormal && isnormal(length(pgd))){

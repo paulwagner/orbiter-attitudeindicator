@@ -57,6 +57,7 @@ public:
 
 	void inline ToggleDockRef(){ idsDockRef = !idsDockRef; }
 	inline bool IsDockRef() const { return idsDockRef; }
+	void inline SetDockRef(bool b){ idsDockRef = b; }
 
 private:
 	const VESSEL *v;

@@ -37,6 +37,8 @@ typedef struct _MFDSettings {
 	int turnVectorMode;
 	bool hasManRot;
 	VECTOR3 manRot;
+	bool idsDockRef;
+	int navId;
 } MFDSettings;
 
 #endif

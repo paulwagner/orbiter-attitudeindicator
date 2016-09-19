@@ -88,8 +88,11 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 		settings->isValid = true;
 		settings->hasManRot = false;
 	} else {
+		// TODO: Avoid manual copy of settings
 		attref->GetFlightStatus().hasManRot = settings->hasManRot;
 		attref->GetFlightStatus().manRot = settings->manRot;
+		attref->SetDockRef(settings->idsDockRef);
+		attref->SetNavid(settings->navId);
 	}
 	chw = round((double)H / 20);
 	chw = min(chw,round((double)W / 20));
@@ -107,6 +110,8 @@ AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 	// Save persistent values of ADI reference class
 	settings->hasManRot = attref->GetFlightStatus().hasManRot;
 	settings->manRot = attref->GetFlightStatus().manRot;
+	settings->idsDockRef = attref->IsDockRef();
+	settings->navId = attref->GetNavid();
 	// MFD cleanup code
 	delete (attref);
 	delete (adi);
@@ -174,8 +179,9 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 // Return button menus
 int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 {
+	static MFDBUTTONMENU static_mnu[12];
 	// The menu descriptions for the buttons
-	static MFDBUTTONMENU mnu[12] = {
+	MFDBUTTONMENU mnu[12] = {
 		{ "Change Frame", 0, 'F' },
 		{ "Change Mode", 0, 'M' },
 		{ "Toggle Rate", "Indicators", 'T' },
@@ -204,7 +210,8 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v)) { mnu[8] = { "Increase OBS", 0, 'D' }; mnu[9] = { "Decrease OBS", 0, 'R' }; }
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL))  mnu[10] = { "Change reference system", 0, 'S' };
 	if (settings->frm == 3) mnu[11] = { "Change displayed data", 0, 'C' };
-	if (menu) *menu = mnu;
+	memcpy(static_mnu, mnu, sizeof(mnu));
+	if (menu) *menu = static_mnu;
 	return 12; // return the number of buttons used
 }
 
