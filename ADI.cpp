@@ -189,6 +189,7 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 	if (skphDC != NULL) {
 		BitBlt(skphDC, x, y, width, height, this->hDC, 0, 0, SRCCOPY);
 	}
+#ifdef ORBITER2016
 	else {
 		// Workaround for newer D3D9 clients
 		SURFHANDLE surf = skp->GetSurface();
@@ -200,6 +201,7 @@ void ADI::DrawBall(oapi::Sketchpad* skp, double zoom) {
 		oapiBlt(surf, newSurf, x, y, 0, 0, width, height);
 		oapiDestroySurface(newSurf);
 	}
+#endif
 
 	DrawVectors(skp);
 	if (settings->turnVectorMode == 1)
