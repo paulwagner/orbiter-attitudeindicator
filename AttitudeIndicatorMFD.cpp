@@ -141,7 +141,7 @@ char *AttitudeIndicatorMFD::ButtonLabel(int bt)
 	if (settings->frm == 4 && SRFNAVTYPE(navType, v) && (bt == 9)) return "OB-";
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return "REF";
 	if (settings->frm == 4 && (bt >= 7 && bt < 10)) return ""; // Only prograde/retrograde in NAV
-	if (settings->frm == 4 && (navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return ""; // No markers if no signal is tuned
+	if (settings->frm == 4 && (!SRFNAVTYPE(navType, v)) && (bt >= 6 && bt < 10)) return ""; // No markers if not surface nav
 	if ((settings->mode == 1 || !(settings->frm == 3 || (settings->frm == 4 && SRFNAVTYPE(navType, v)))) && (bt == 10)) return ""; // SPD only in surface text mode
 	if (settings->frm == 3 && (bt == 11)) return "DAT"; // DAT in LHLN
 	if (settings->frm != 4 && (bt == 11)) return ""; // NAV only in NAV mode
@@ -171,7 +171,7 @@ int AttitudeIndicatorMFD::ButtonMenu(const MFDBUTTONMENU **menu) const
 	DWORD navType = attref->GetFlightStatus().navType;
 	if (settings->frm <= 1) mnu[6] = mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // No markers in ECL and EQU
 	if (settings->frm == 4) mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // Only prograde/retrograde in NAV
-	if (settings->frm == 4 && (navType == TRANSMITTER_NONE)) mnu[6] = mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // No markers if no signal is tuned
+	if (settings->frm == 4 && (!SRFNAVTYPE(navType, v))) mnu[6] = mnu[7] = mnu[8] = mnu[9] = { 0, 0, 0 }; // No markers if not surface nav
 	if ((settings->mode == 1 || !(settings->frm == 3 || (settings->frm == 4 && SRFNAVTYPE(navType, v))))) mnu[10] = { 0, 0, 0 }; // SPD only in surface text mode
 	if (settings->frm != 4) mnu[11] = { 0, 0, 0 }; // NAV only in NAV mode
 	if (settings->frm <= 2){
@@ -205,7 +205,7 @@ bool AttitudeIndicatorMFD::ConsumeButton(int bt, int event)
 	if (settings->frm <= 1 && (bt >= 6 && bt < 10)) return 0; // No markers in ECL and EQU
 	if (settings->frm <= 2 && (bt == 10 || bt == 11)) return ConsumeKeyBuffered(btkey[bt]);
 	if (settings->frm == 4 && (bt >= 7 && bt < 10)) return 0; // Only prograde/retrograde in NAV
-	if (settings->frm == 4 && (navType == TRANSMITTER_NONE) && (bt >= 6 && bt < 10)) return 0; // No markers if no signal is tuned
+	if (settings->frm == 4 && (!SRFNAVTYPE(navType, v)) && (bt >= 6 && bt < 10)) return 0; // No markers if not surface nav
 	if (settings->frm == 4 && (navType == TRANSMITTER_IDS || navType == TRANSMITTER_VTOL) && (bt == 10)) return ConsumeKeyBuffered(btkey[bt]); // REF in IDS/VTOL mode
 	if ((settings->mode == 1 || !(settings->frm == 3 || (settings->frm == 4 && SRFNAVTYPE(navType, v)))) && (bt == 10)) return 0; // SPD only in surface text mode
 	if (!(settings->frm == 4 || settings->frm == 3) && (bt == 11)) return 0; // NAV only in NAV mode, DAT only in LHLN mode
