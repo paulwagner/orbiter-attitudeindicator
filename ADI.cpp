@@ -453,7 +453,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		if (fs.navType == TRANSMITTER_ILS || (fs.navType == TRANSMITTER_NONE && attref->GetVessel()->GetAtmRef() != 0) || fs.navType == TRANSMITTER_VOR) {
 			int tx = cx;
 			int ty = cy;
-			double crs = fs.navCrs[settings->navId];
+			double crs = settings->navCrs[settings->navId];
 			VECTOR3 chvec;
 			double sinp = sin(crs), cosp = cos(crs);
 			if (attref->GetProjMode() == 0)

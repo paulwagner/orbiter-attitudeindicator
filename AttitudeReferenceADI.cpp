@@ -4,17 +4,12 @@
 #include "AttitudeRetrieval.h"
 
 AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel, const MFDSettings* settings) : AttitudeReference(vessel, settings) {
-	fs.navCnt = vessel->GetNavCount();
-	fs.navCrs = (double*)malloc(sizeof(double) * fs.navCnt);
-	for (int i = 0; i < fs.navCnt; i++)
-		fs.navCrs[i] = 0;
 	fs.navType = TRANSMITTER_NONE;
 	prevGS = 0; prevIAS = 0; prevTAS = 0; prevOS = 0; prevAlt = 0; prevt = 0;
 	PostStep(0, 0, 0);
 }
 
 AttitudeReferenceADI::~AttitudeReferenceADI() {
-	if (fs.navCrs) delete fs.navCrs;
 }
 
 bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
@@ -69,7 +64,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 			if (GetProjMode() == 0) fs.navBrg = atan2(dir.x, dir.z); else fs.navBrg = asin(dir.x);
 			fs.navBrg = posangle(fs.navBrg);
 			if (ndata.type == TRANSMITTER_ILS)
-				fs.navCrs[GetSettings()->navId] = ndata.ils.appdir;
+				GetSettings()->navCrs[GetSettings()->navId] = ndata.ils.appdir;
 		}
 	}
 	bool navTypeChanged = (prevNavType != fs.navType);

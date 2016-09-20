@@ -41,9 +41,7 @@ typedef struct {
 	bool hasNavTarget;
 	VECTOR3 navTargetRelPos;
 	VECTOR3 navTargetRelVel;
-	//double navBrg;
-	//int navCnt;
-	//double* navCrs;
+	double navBrg;
 	DWORD navType;
 } FLIGHTSTATUS;
 

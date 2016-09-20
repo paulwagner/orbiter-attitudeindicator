@@ -43,7 +43,11 @@ DLLCLBK void ExitModule (HINSTANCE hDLL)
 	TRACE("[AttitudeIndicatorMFD] Enter: ExitModule");
 	// Free MFD settings
 	for (vector<MFDSettings*>::iterator it = settingsMap.begin(); it != settingsMap.end(); ++it) {
-		if ((*it)) free((*it));
+		if ((*it)) {
+			if ((*it)->navCrs)
+				free((*it)->navCrs);
+			free((*it));
+		}
 		//settingsMap.erase(it);
 	}
 	// Unregister the custom MFD mode when the module is unloaded
@@ -103,6 +107,10 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 		settings->hasManRot = false;
 		settings->idsDockRef = false;
 		settings->navId = 0;
+		int navCount = vessel->GetNavCount();
+		settings->navCrs = (double*)malloc(sizeof(double) * navCount);
+		for (int i = 0; i < navCount; i++)
+			settings->navCrs[i] = 0;
 		settingsMap.push_back(settings);
 	}
 	attref = new AttitudeReferenceADI(pV, settings);
@@ -268,10 +276,10 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_R:
 		if (settings->frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType, attref->GetVessel())) {
 			// Button OB- in NAV mode
-			crs = attref->GetFlightStatus().navCrs[settings->navId];
+			crs = settings->navCrs[settings->navId];
 			crs -= RAD;
 			if (crs < 0) crs += 2 * PI;
-			attref->GetFlightStatus().navCrs[settings->navId] = crs;
+			settings->navCrs[settings->navId] = crs;
 			return true;
 		}
 		settings->drawRadial = !settings->drawRadial;
@@ -279,10 +287,10 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_D:
 		if (settings->frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType, attref->GetVessel())) {
 			// Button OB+ in NAV mode
-			crs = attref->GetFlightStatus().navCrs[settings->navId];
+			crs = settings->navCrs[settings->navId];
 			crs += RAD;
 			if (crs >= 2 * PI) crs -= 2 * PI;
-			attref->GetFlightStatus().navCrs[settings->navId] = crs;
+			settings->navCrs[settings->navId] = crs;
 			return true;
 		}
 		settings->drawPerpendicular = !settings->drawPerpendicular;
@@ -799,7 +807,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 			// Row 2
 			iy += (chw3_i + th);
-			WriteText(skp, cp1_x + chw3_i, iy, kw, "CRS", convertAngleString(fs.navCrs[settings->navId]));
+			WriteText(skp, cp1_x + chw3_i, iy, kw, "CRS", convertAngleString(settings->navCrs[settings->navId]));
 			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "HDG", convertAngleString(fs.heading));
 
 			// Row 3

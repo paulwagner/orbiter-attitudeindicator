@@ -40,6 +40,7 @@ typedef struct _MFDSettings {
 	VECTOR3 manRot;
 	bool idsDockRef;
 	int navId;
+	double* navCrs;
 } MFDSettings;
 
 #endif
