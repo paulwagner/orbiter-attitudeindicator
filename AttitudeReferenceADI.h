@@ -1,7 +1,21 @@
 #ifndef _ATTITUDEREFERENCEADI_H_
 #define _ATTITUDEREFERENCEADI_H_
 
-#include "attref.h"
+#include "MFDCore.h"
+
+#ifndef ORBITER2016
+// From beta OrbiterAPI.h
+/**
+* \brief Returns the input argument normalised to range 0 ... 2 pi
+* \param angle input angle [rad]
+* \return normalised angle [rad]
+*/
+inline double posangle(double angle)
+{
+	double a = fmod(angle, PI2);
+	return (a >= 0.0 ? a : a + PI2);
+}
+#endif
 
 typedef struct {
 	bool docked;
@@ -45,11 +59,19 @@ typedef struct {
 	DWORD navType;
 } FLIGHTSTATUS;
 
-class AttitudeReferenceADI : public AttitudeReference {
+class AttitudeReferenceADI {
 public:
   AttitudeReferenceADI(const VESSEL* vessel, const MFDSettings *settings);
   ~AttitudeReferenceADI();
-  inline FLIGHTSTATUS &GetFlightStatus(){ return fs; };
+
+  inline const VESSEL *GetVessel() const { return v; }
+  inline const MFDSettings* GetSettings() { return s; }
+  inline const MATRIX3 &GetFrameRotMatrix() const { return R; }
+  inline const VECTOR3 &GetEulerAngles() const { return euler; }
+  inline const VECTOR3 &GetTgtEulerAngles() const { return tgteuler; }
+  inline const VECTOR3 &GetTgtVelEulerAngles() const { return tgtveleuler; }
+  inline FLIGHTSTATUS &GetFlightStatus() { return fs; }
+
   bool PostStep(double simt, double simdt, double mjd);
   bool GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
   bool GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular);
@@ -58,8 +80,13 @@ public:
   bool GetReferenceName(char *string, int n);
 
 private:
+	const VESSEL *v;
+	const MFDSettings* s;
 	FLIGHTSTATUS fs;
 	void CalculateDirection(VECTOR3 euler, VECTOR3 &dir);
+	void UpdateFrameRotMatrix();
+	void UpdateEulerAngles();
+	void UpdateTargetEulerAngles();
 
 	double prevIAS;
 	double prevTAS;
@@ -67,6 +94,11 @@ private:
 	double prevOS;
 	double prevAlt;
 	double prevt;
+
+	mutable MATRIX3 R;
+	mutable VECTOR3 euler;
+	mutable VECTOR3 tgteuler;
+	mutable VECTOR3 tgtveleuler;
 
 };
 

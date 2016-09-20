@@ -3,7 +3,9 @@
 #include "commons.h"
 #include "AttitudeRetrieval.h"
 
-AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel, const MFDSettings* settings) : AttitudeReference(vessel, settings) {
+AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel, const MFDSettings* settings) {
+	v = vessel;
+	s = settings;
 	fs.navType = TRANSMITTER_NONE;
 	prevGS = 0; prevIAS = 0; prevTAS = 0; prevOS = 0; prevAlt = 0; prevt = 0;
 	PostStep(0, 0, 0);
@@ -12,17 +14,238 @@ AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel, const MFDSettin
 AttitudeReferenceADI::~AttitudeReferenceADI() {
 }
 
-bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
-	AttitudeReference::PostStep(simt, simdt, mjd);
+void AttitudeReferenceADI::UpdateFrameRotMatrix() {
+	// Calculates rotation matrix for rotation from reference frame to global frame
+	NAVDATA ndata;
 
-	const VESSEL *v = GetVessel();
+	VECTOR3 axis1, axis2, axis3;
+	switch (s->frm) {
+	case 0:    // inertial (ecliptic)
+		axis3 = _V(1, 0, 0);
+		axis2 = _V(0, 1, 0);
+		break;
+	case 1: {  // inertial (equator)
+		MATRIX3 R;
+		oapiGetPlanetObliquityMatrix(v->GetGravityRef(), &R);
+		axis3 = _V(R.m11, R.m21, R.m31);
+		axis2 = _V(R.m12, R.m22, R.m32);
+	} break;
+	case 2: {  // orbital velocity / orbital momentum vector
+		OBJHANDLE hRef = v->GetGravityRef();
+		v->GetRelativeVel(hRef, axis3);
+		axis3 = unit(axis3);
+		VECTOR3 vv, vm;
+		v->GetRelativePos(hRef, vv);    // local vertical
+		vm = crossp(axis3, vv);    // direction of orbital momentum
+		axis2 = unit(crossp(vm, axis3));
+	} break;
+	case 3: {  // local horizon / local north (surface)
+		OBJHANDLE hRef = v->GetSurfaceRef();
+		v->GetRelativePos(hRef, axis2);
+		axis2 = unit(axis2);
+		MATRIX3 prot;
+		oapiGetRotationMatrix(hRef, &prot);
+		VECTOR3 paxis = { prot.m12, prot.m22, prot.m32 };  // planet rotation axis in global frame
+		VECTOR3 yaxis = unit(crossp(paxis, axis2));      // direction of yaw=+90 pole in global frame
+		axis3 = crossp(axis2, yaxis);
+	} break;
+	case 4: {  // synced to NAV source (type-specific)
+		NAVHANDLE hNav = v->GetNavSource(s->navId);
+		axis3 = _V(0, 0, 1);
+		axis2 = _V(0, 1, 0);
+		if (hNav) {
+			oapiGetNavData(hNav, &ndata);
+			switch (ndata.type) {
+			case TRANSMITTER_IDS: {
+				VECTOR3 pos, dir, rot;
+				MATRIX3 R;
+				VESSEL *vtgt = oapiGetVesselInterface(ndata.ids.hVessel);
+				vtgt->GetRotationMatrix(R);
+				vtgt->GetDockParams(ndata.ids.hDock, pos, dir, rot);
+				axis3 = -mul(R, dir);
+				axis2 = mul(R, rot);
+			} break;
+			case TRANSMITTER_XPDR: {
+				MATRIX3 R;
+				VESSEL *vtgt = oapiGetVesselInterface(ndata.ids.hVessel);
+				vtgt->GetRotationMatrix(R);
+				axis3 = _V(R.m13, R.m23, R.m33);
+				axis2 = _V(R.m12, R.m22, R.m32);
+			} break;
+			default: {
+				// Local heading in VTOL/VOR/ILS mode
+				OBJHANDLE hRef = v->GetSurfaceRef();
+				v->GetRelativePos(hRef, axis2);
+				axis2 = unit(axis2);
+				MATRIX3 prot;
+				oapiGetRotationMatrix(hRef, &prot);
+				VECTOR3 paxis = { prot.m12, prot.m22, prot.m32 };  // planet rotation axis in global frame
+				VECTOR3 yaxis = unit(crossp(paxis, axis2));      // direction of yaw=+90 pole in global frame
+				axis3 = crossp(axis2, yaxis);
+			} break;
+			}
+		}
+		else {
+			// Local heading in if no station is tuned
+			OBJHANDLE hRef = v->GetSurfaceRef();
+			v->GetRelativePos(hRef, axis2);
+			axis2 = unit(axis2);
+			MATRIX3 prot;
+			oapiGetRotationMatrix(hRef, &prot);
+			VECTOR3 paxis = { prot.m12, prot.m22, prot.m32 };  // planet rotation axis in global frame
+			VECTOR3 yaxis = unit(crossp(paxis, axis2));      // direction of yaw=+90 pole in global frame
+			axis3 = crossp(axis2, yaxis);
+		}
+
+	} break;
+	}
+
+	axis1 = crossp(axis2, axis3);
+	R = _M(axis1.x, axis2.x, axis3.x, axis1.y, axis2.y, axis3.y, axis1.z, axis2.z, axis3.z);
+}
+
+void AttitudeReferenceADI::UpdateEulerAngles() {
+	// Rotation matrix ship->global
+	MATRIX3 srot;
+	v->GetRotationMatrix(srot);
+
+	// map ship's local axes into reference frame
+	VECTOR3 shipx = { srot.m11, srot.m21, srot.m31 };
+	VECTOR3 shipy = { srot.m12, srot.m22, srot.m32 };
+	VECTOR3 shipz = { srot.m13, srot.m23, srot.m33 };
+
+	NAVHANDLE navhandle = v->GetNavSource(s->navId);
+	NAVDATA ndata;
+	if (s->frm == 4 && s->idsDockRef && navhandle) {
+		oapiGetNavData(navhandle, &ndata);
+		// map ship's docking port axes into reference frame
+		if (ndata.type == TRANSMITTER_IDS) {
+			DOCKHANDLE vDh = v->GetDockHandle(0);
+			VECTOR3 vDpos, vDrot, vDdir;
+			v->GetDockParams(vDh, vDpos, vDdir, vDrot);
+			v->GlobalRot(vDdir, vDdir);
+			v->GlobalRot(vDrot, vDrot);
+			shipz = unit(vDdir);
+			shipy = unit(vDrot);
+			shipx = crossp(shipy, shipz);
+		}
+		// swap ship's y and z axis
+		if (ndata.type == TRANSMITTER_VTOL) {
+			VECTOR3 tmp;
+			tmp = shipy;
+			shipy = shipz;
+			shipz = -tmp;
+		}
+	}
+	shipx = tmul(R, shipx);
+	shipy = tmul(R, shipy);
+	shipz = tmul(R, shipz);
+
+	CheckRange(shipz.y, -1., 1.); // asin takes [-1,1]
+	euler.x = atan2(shipx.y, shipy.y);  // roll angle
+	euler.y = asin(shipz.y);            // pitch angle
+	euler.z = atan2(shipz.x, shipz.z);  // yaw angle
+	for (int i = 0; i < 3; i++)
+		euler.data[i] = posangle(euler.data[i]);
+}
+
+inline void offsetDir(VECTOR3 &vec) {
+	const double offs = 0.1;
+	for (int i = 0; i < 3; i++) {
+		if (abs(vec.data[i]) <= offs)
+			vec.data[i] = 1.0 / 10000000;
+		else if (vec.data[i] < 0) vec.data[i] += offs;
+		else vec.data[i] -= offs;
+	}
+}
+
+void AttitudeReferenceADI::UpdateTargetEulerAngles() {
+	NAVHANDLE hNav;
+	if (s->frm < 4 || !(hNav = v->GetNavSource(s->navId))) return;
+
+	NAVDATA ndata;
+	oapiGetNavData(hNav, &ndata);
+
+	// Calculate euler angles for direction of NAV source
+	VECTOR3 dir, sdir;
+	oapiGetNavPos(hNav, &dir);
+	v->GetGlobalPos(sdir);
+
+	VECTOR3 relDir = dir - sdir;
+	// Correct docking port poosition in IDS mode
+	if (s->idsDockRef && ndata.type == TRANSMITTER_IDS) {
+		DOCKHANDLE vDh = v->GetDockHandle(0);
+		VECTOR3 vDpos, vDrot, vDdir;
+		v->GetDockParams(vDh, vDpos, vDdir, vDrot);
+		v->GlobalRot(vDpos, vDpos);
+		sdir += vDpos;
+		MATRIX3 vrotm;
+		v->GetRotationMatrix(vrotm);
+		VECTOR3 vesselDir = tmul(vrotm, dir - sdir);
+		offsetDir(vesselDir);
+		relDir = mul(vrotm, vesselDir);
+	}
+	dir = tmul(R, unit(relDir));
+	if (abs(relDir.x) <= 1.0 / 1000000 && abs(relDir.y) <= 1.0 / 1000000 && abs(relDir.z) <= 1.0 / 1000000) {
+		dir = _V(0, 0, 1); // When close, lock on target
+	}
+
+	tgteuler.y = asin(dir.y);
+	tgteuler.z = atan2(dir.x, dir.z);
+	tgteuler.y = posangle(tgteuler.y);
+	tgteuler.z = posangle(tgteuler.z);
+
+	// Calculate velocity of NAV source
+	VECTOR3 tvel, svel, tgt_rvel;
+	v->GetGlobalVel(svel);
+	OBJHANDLE hObj = NULL;
+	switch (ndata.type) {
+	case TRANSMITTER_IDS:
+		hObj = ndata.ids.hVessel;
+		break;
+	case TRANSMITTER_XPDR:
+		hObj = ndata.xpdr.hVessel;
+		break;
+	case TRANSMITTER_VTOL:
+		hObj = ndata.vtol.hBase;
+		break;
+	case TRANSMITTER_VOR:
+		hObj = ndata.vor.hPlanet;
+		break;
+	}
+	if (hObj) {
+		if (ndata.type == TRANSMITTER_VOR) {
+			MATRIX3 Rp;
+			oapiGetRotationMatrix(hObj, &Rp);
+			oapiGetGlobalVel(hObj, &tvel);
+			tvel += mul(Rp, _V(-sin(ndata.vor.lng), 0, cos(ndata.vor.lng)) * PI2 / oapiGetPlanetPeriod(hObj)*oapiGetSize(hObj)*cos(ndata.vor.lat));
+		}
+		else {
+			oapiGetGlobalVel(hObj, &tvel);
+		}
+		tgt_rvel = svel - tvel;
+	}
+	dir = tmul(R, unit(tgt_rvel));
+
+	tgtveleuler.y = asin(dir.y);
+	tgtveleuler.z = atan2(dir.x, dir.z);
+	tgtveleuler.y = posangle(tgtveleuler.y);
+	tgtveleuler.z = posangle(tgtveleuler.z);
+}
+
+
+bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
+	UpdateFrameRotMatrix();
+	UpdateEulerAngles();
+	UpdateTargetEulerAngles();
+
 	VECTOR3 vec;
 	ELEMENTS elem;
 	ORBITPARAM orbitparam;
 	OBJHANDLE body;
 	// Body-independent parameters
 	int frm = FRAME_EQU;
-	if (GetSettings()->frm == 0) frm = FRAME_ECL;
+	if (s->frm == 0) frm = FRAME_ECL;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
 	fs.aoa = v->GetAOA();
@@ -32,7 +255,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	oapiGetPitch(v->GetHandle(), &fs.pitch);
 	oapiGetBank(v->GetHandle(), &fs.bank);
 	// Target-relative Parameters
-	NAVHANDLE navhandle = v->GetNavSource(GetSettings()->navId);
+	NAVHANDLE navhandle = v->GetNavSource(s->navId);
 	NAVDATA ndata;
 	fs.hasNavTarget = false;
 	DWORD prevNavType = fs.navType;
@@ -60,11 +283,11 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 			}
 		}
 		else if (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL) {
-			VECTOR3 dir = tmul(GetFrameRotMatrix(), unit(tgtpos - vPos));
-			if (GetProjMode() == 0) fs.navBrg = atan2(dir.x, dir.z); else fs.navBrg = asin(dir.x);
+			VECTOR3 dir = tmul(R, unit(tgtpos - vPos));
+			fs.navBrg = atan2(dir.x, dir.z);
 			fs.navBrg = posangle(fs.navBrg);
 			if (ndata.type == TRANSMITTER_ILS)
-				GetSettings()->navCrs[GetSettings()->navId] = ndata.ils.appdir;
+				s->navCrs[s->navId] = ndata.ils.appdir;
 		}
 	}
 	bool navTypeChanged = (prevNavType != fs.navType);
@@ -123,10 +346,10 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	}
 
 	// Body-relative parameters
-	body = GetVessel()->GetGravityRef();
-	if (GetSettings()->frm == 3 ||
-		(GetSettings()->frm == 4 && navhandle != 0 && (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL)))
-		body = GetVessel()->GetSurfaceRef();
+	body = v->GetGravityRef();
+	if (s->frm == 3 ||
+		(s->frm == 4 && navhandle != 0 && (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL)))
+		body = v->GetSurfaceRef();
 	double body_rad = oapiGetSize(body);
 	v->GetElements(body, elem, &orbitparam, 0, frm);
 	fs.apoapsis = orbitparam.ApD;
@@ -165,78 +388,65 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 }
 
 bool AttitudeReferenceADI::GetAirspeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular) {
-	MATRIX3 m = GetFrameRotMatrix();
-	const VESSEL *v = GetVessel();
 	v->GetShipAirspeedVector(prograde);
 	v->GlobalRot(prograde, prograde);
-	prograde = tmul(m, unit(prograde));
+	prograde = tmul(R, unit(prograde));
 	v->GetRelativePos(v->GetGravityRef(), radial);
-	radial = tmul(m, unit(radial));
+	radial = tmul(R, unit(radial));
 	normal = crossp(unit(prograde), unit(radial));
 	perpendicular = -crossp(unit(prograde), unit(normal));
 	return true;
 }
 
 bool AttitudeReferenceADI::GetOrbitalSpeedDirection(VECTOR3 &prograde, VECTOR3 &normal, VECTOR3 &radial, VECTOR3 &perpendicular) {
-	MATRIX3 m = GetFrameRotMatrix();
-	const VESSEL *v = GetVessel();
 	prograde = _V(0,0,1);
 	perpendicular = _V(0,1,0);
 	normal = _V(-1,0,0);
 	v->GetRelativePos(v->GetGravityRef(), radial);
-	radial = tmul(m, unit(radial));
+	radial = tmul(R, unit(radial));
 	return true;
 }
 
 bool AttitudeReferenceADI::GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel) {
-	VECTOR3 euler;
-	SetTgtmode(2);
-	GetTgtEulerAngles(euler);
-	CalculateDirection(euler, tgtpos);
-	SetTgtmode(3);
-	PostStep(0, 0, 0);
-	GetTgtEulerAngles(euler);
-	CalculateDirection(euler, tgtvel);
+	CalculateDirection(tgteuler, tgtpos);
+	CalculateDirection(tgtveleuler, tgtvel);
 	return true;
 }
 
 bool AttitudeReferenceADI::GetManeuverDirections(VECTOR3 &man) {
-	if (!GetSettings()->hasManRot) return false;
+	if (!s->hasManRot) return false;
 	man = _V(0, 0, 1);
-	MATRIX3 R;
-	getRotMatrix(GetSettings()->manRot, &R);
-	man = tmul(R, man); // Apply maneuver rotation
-	man = tmul(GetFrameRotMatrix(), man); // Apply frame rotation
+	MATRIX3 m;
+	getRotMatrix(s->manRot, &m);
+	man = tmul(m, man); // Apply maneuver rotation
+	man = tmul(R, man); // Apply frame rotation
 	return true;
 }
 
 void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
 	double sint = sin(euler.y), cost = cos(euler.y);
 	double sinp = sin(euler.z), cosp = cos(euler.z);
-	if (GetProjMode() == 0)
-		dir = _V(RAD*sinp*cost, RAD*sint, RAD*cosp*cost);
-	else
-		dir = _V(-RAD*sint*cosp, RAD*sinp, RAD*cost*cosp);
+	dir = _V(RAD*sinp*cost, RAD*sint, RAD*cosp*cost);
 }
 
 bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {
 	OBJHANDLE handle = 0;
-	switch (GetSettings()->frm) {
+	switch (s->frm) {
 	case 0:
 	case 1:
 	case 2: {
-		handle = GetVessel()->GetGravityRef();
+		handle = v->GetGravityRef();
 		oapiGetObjectName(handle, string, n);
 	}
 		return true;
 	case 3: {
-		handle = GetVessel()->GetSurfaceRef();
+		handle = v->GetSurfaceRef();
 		oapiGetObjectName(handle, string, n);
 	}
 		return true;
 	case 4: {
 		NAVDATA ndata;
-		NAVHANDLE navhandle = GetVessel()->GetNavSource(GetSettings()->navId);
+		NAVHANDLE navhandle = v->GetNavSource(s->navId);
 		if (navhandle) {
 			oapiGetNavData(navhandle, &ndata);
 			switch (ndata.type) {

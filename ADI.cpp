@@ -220,42 +220,20 @@ void ADI::GetOpenGLRotMatrix(double* m) {
 	double sinr = sin(rho), cosr = cos(rho);
 
 	// Ball transformation
-	if (attref->GetProjMode() == 0) {
-		// below are the coefficients of the rows of the rotation matrix M for the ball,
-		// given by M = RTP, with
-		// MATRIX3 P = {cosp,0,-sinp,  0,1,0,  sinp,0,cosp};
-		// MATRIX3 T = {1,0,0,  0,cost,-sint,  0,sint,cost};
-		// MATRIX3 R = {cosr,sinr,0,  -sinr,cosr,0,  0,0,1};
-
-		m[0] = cosr*cosp - sinr*sint*sinp;
-		m[4] = sinr*cost;
-		m[8] = -cosr*sinp - sinr*sint*cosp;
-		m[1] = -sinr*cosp - cosr*sint*sinp;
-		m[5] = cosr*cost;
-		m[9] = sinr*sinp - cosr*sint*cosp;
-		m[2] = cost*sinp;
-		m[6] = sint;
-		m[10] = cost*cosp;
-
-	}
-	else {
-		// below are the coefficients of the rows of the rotation matrix M for the ball,
-		// given by M = ZRPT, with
-		// MATRIX3 Z = {0,1,0,  -1,0,0,  0,0,1};
-		// MATRIX3 P = {1,0,0,  0,cosp,-sinp,  0,sinp,cosp};  // yaw
-		// MATRIX3 T = {cost,0,sint,  0,1,0,  -sint,0,cost};  // pitch
-		// MATRIX3 R = {cosr,sinr,0,  -sinr,cosr,0,  0,0,1};  // bank
-
-		m[0] = -sinr*cost + cosr*sinp*sint;
-		m[4] = cosr*cosp;
-		m[8] = -sinr*sint - cosr*sinp*cost;
-		m[1] = -cosr*cost - sinr*sinp*sint;
-		m[5] = -sinr*cosp;
-		m[9] = -cosr*sint + sinr*sinp*cost;
-		m[2] = -cosp*sint;
-		m[6] = sinp;
-		m[10] = cosp*cost;
-	}
+	// below are the coefficients of the rows of the rotation matrix M for the ball,
+	// given by M = RTP, with
+	// MATRIX3 P = {cosp,0,-sinp,  0,1,0,  sinp,0,cosp};
+	// MATRIX3 T = {1,0,0,  0,cost,-sint,  0,sint,cost};
+	// MATRIX3 R = {cosr,sinr,0,  -sinr,cosr,0,  0,0,1};
+	m[0] = cosr*cosp - sinr*sint*sinp;
+	m[4] = sinr*cost;
+	m[8] = -cosr*sinp - sinr*sint*cosp;
+	m[1] = -sinr*cosp - cosr*sint*sinp;
+	m[5] = cosr*cost;
+	m[9] = sinr*sinp - cosr*sint*cosp;
+	m[2] = cost*sinp;
+	m[6] = sint;
+	m[10] = cost*cosp;
 
 	m[3] = 0;
 	m[7] = 0;
@@ -456,10 +434,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 			double crs = settings->navCrs[settings->navId];
 			VECTOR3 chvec;
 			double sinp = sin(crs), cosp = cos(crs);
-			if (attref->GetProjMode() == 0)
-				chvec = _V(RAD*sinp, 0, RAD*cosp);
-			else
-				chvec = _V(0, RAD*sinp, RAD*cosp);
+			chvec = _V(RAD*sinp, 0, RAD*cosp);
 			ProjectVector(chvec, x, y, phi);
 			ix = (int)x, iy = (int)y;
 			if (abs(phi) <= phiF) {

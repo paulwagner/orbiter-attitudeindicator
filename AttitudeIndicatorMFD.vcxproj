@@ -116,7 +116,6 @@
     <ClCompile Include="AttitudeIndicatorMFD.cpp" />
     <ClCompile Include="AttitudeReferenceADI.cpp" />
     <ClCompile Include="AttitudeRetrieval.cpp" />
-    <ClCompile Include="attref.cpp" />
     <ClCompile Include="commons.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="imageloader.cpp" />
@@ -126,7 +125,6 @@
     <ClInclude Include="AttitudeIndicatorMFD.h" />
     <ClInclude Include="AttitudeReferenceADI.h" />
     <ClInclude Include="AttitudeRetrieval.h" />
-    <ClInclude Include="attref.h" />
     <ClInclude Include="commons.h" />
     <ClInclude Include="Configuration.h" />
     <ClInclude Include="imageloader.h" />

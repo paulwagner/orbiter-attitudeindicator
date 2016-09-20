@@ -48,7 +48,6 @@ DLLCLBK void ExitModule (HINSTANCE hDLL)
 				free((*it)->navCrs);
 			free((*it));
 		}
-		//settingsMap.erase(it);
 	}
 	// Unregister the custom MFD mode when the module is unloaded
 	oapiUnregisterMFDMode(MFDMode);
@@ -166,7 +165,6 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, chw, chw, config->getConfig(), settings);
 		break;
 	}
-	attref->invalidateAttitude();
 }
 
 // Return button labels
@@ -307,7 +305,6 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		return true;
 	case OAPI_KEY_F:
 		settings->frm = (settings->frm + 1) % frmCount;
-		attref->invalidateAttitude();
 		InvalidateButtons();
 		return true;
 	case OAPI_KEY_S:
