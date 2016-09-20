@@ -448,11 +448,14 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 				skp->Line(ix - (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale), ix, iy - (int)round(cyd*crsScale));
 				skp->Line(ix, iy - (int)round(cyd*crsScale), ix + (int)round(cxd*dx*crsScale), iy + (int)round(cyd*dy*crsScale));
 			}
+			// Get airspeed prograde vector in ILS, VOR of surface nav mode
+			attref->GetAirspeedDirection(pgd, nml, rad, pep);
 		}
 	}
 
 	// Prograde
-	if (frm > 1 && settings->drawPrograde && (frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL) && !fs.docked))
+	if (frm > 1 && settings->drawPrograde &&
+		(frm != 4 || (fs.hasNavTarget && (fs.navType == TRANSMITTER_IDS || fs.navType == TRANSMITTER_XPDR || fs.navType == TRANSMITTER_VTOL) && !fs.docked) || (fs.navType == TRANSMITTER_NONE && attref->GetVessel()->GetAtmRef() != 0) || fs.navType == TRANSMITTER_VOR || fs.navType == TRANSMITTER_ILS)
 		&& isnormal(length(pgd))) {
 		ProjectVector(pgd, x, y, phi);
 		ix = (int)x, iy = (int)y;
