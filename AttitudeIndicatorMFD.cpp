@@ -6,12 +6,9 @@
 #include "ADI.h"
 #include "AttitudeReferenceADI.h"
 #include <sstream>
-#include <vector>
 #include "Configuration.h"
 #include "commons.h"
 #include "AttitudeRetrieval.h"
-
-using namespace std;
 
 #define SRFNAVTYPE(x, v) ((x == TRANSMITTER_NONE && v->GetAtmRef() != 0) ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
 
@@ -19,7 +16,6 @@ using namespace std;
 // Global variables
 static int MFDMode;
 static AttitudeIndicatorMFD* CurrentMFD = 0;
-static vector<MFDSettings*> settingsMap;
 
 // ==============================================================
 // API interface
@@ -41,14 +37,7 @@ DLLCLBK void InitModule (HINSTANCE hDLL)
 DLLCLBK void ExitModule (HINSTANCE hDLL)
 {
 	TRACE("[AttitudeIndicatorMFD] Enter: ExitModule");
-	// Free MFD settings
-	for (vector<MFDSettings*>::iterator it = settingsMap.begin(); it != settingsMap.end(); ++it) {
-		if ((*it)) {
-			if ((*it)->navCrs)
-				free((*it)->navCrs);
-			free((*it));
-		}
-	}
+	freeAllSettings();
 	// Unregister the custom MFD mode when the module is unloaded
 	oapiUnregisterMFDMode(MFDMode);
 }
@@ -77,41 +66,11 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 	brushBlack = oapiCreateBrush(BLACK);
 	brushYellow2 = oapiCreateBrush(YELLOW2);
 	// MFD initialisation
-	bool hasSettings = false;
-	for (vector<MFDSettings*>::iterator it = settingsMap.begin(); it != settingsMap.end(); ++it) {
-		if ((*it) && (*it)->vessel == vessel->GetHandle() && (*it)->mfd == mfd) {
-			hasSettings = true;
-			settings = (*it);
-			break;
-		}
-	}
 	config = new Configuration();
 	if (!config->loadConfig(CONFIG_FILE)) {
 		oapiWriteLog("[AttitudeIndicatorMFD] Failed to load config.");
 	}
-	if (!hasSettings) {
-		settings = (MFDSettings*) malloc(sizeof(MFDSettings));
-		settings->vessel = vessel->GetHandle();
-		settings->mfd = mfd;
-		settings->zoom = DEFAULT_ZOOM;
-		settings->mode = config->getConfig().startMode;
-		settings->frm = config->getConfig().startFrame;
-		settings->speedMode = DEFAULT_SPEED;
-		settings->lhlnDataMode = DEFAULT_LHLN_DATA_MODE;
-		settings->drawPrograde = config->getConfig().startPrograde;
-		settings->drawNormal = config->getConfig().startNormal;
-		settings->drawRadial = config->getConfig().startRadial;
-		settings->drawPerpendicular = config->getConfig().startPerpendicular;
-		settings->turnVectorMode = config->getConfig().startTurnVectorMode;
-		settings->hasManRot = false;
-		settings->idsDockRef = false;
-		settings->navId = 0;
-		int navCount = vessel->GetNavCount();
-		settings->navCrs = (double*)malloc(sizeof(double) * navCount);
-		for (int i = 0; i < navCount; i++)
-			settings->navCrs[i] = 0;
-		settingsMap.push_back(settings);
-	}
+	settings = loadSettings(config->getConfig(), vessel, mfd);
 	attref = new AttitudeReferenceADI(pV, settings);
 	chw = round((double)H / 20);
 	chw = min(chw,round((double)W / 20));
@@ -370,9 +329,9 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 		skp->SetBrush(brushBlack);
 		skp->SetPen(penBlack);
 
-		std::string frmS = frmStrings[settings->frm];
+		string frmS = frmStrings[settings->frm];
 
-		if (settings->frm == 4) frmS.append(std::to_string(settings->navId + 1));
+		if (settings->frm == 4) frmS.append(to_string(settings->navId + 1));
 		int slen = frmS.length();
 		int swidth = skp->GetTextWidth(frmS.c_str(), slen);
 		skp->Rectangle(chw2_i, chw3_i, chw2_i + swidth, chw3_i + th);
@@ -426,13 +385,13 @@ inline int GetScale(int c) {
 	return 2500;
 }
 
-void WriteText(oapi::Sketchpad *skp, int x1, int y1, int kw, std::string k, std::string v) {
+void WriteText(oapi::Sketchpad *skp, int x1, int y1, int kw, string k, string v) {
 	skp->Text(x1, y1, k.c_str(), k.length());
 	skp->Text(x1 + kw, y1, v.c_str(), v.length());
 }
 
 void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height) {
-	std::string s;
+	string s;
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
 	int chw_i = (int)round(chw);
 	int chw2_i = (int)round(chw2);
@@ -467,7 +426,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		skp->Rectangle(x, cp1_y, cp1_x, y + height);
 		double airspeed = 0;
 		bool has_airspeed = true;
-		std::string spd;
+		string spd;
 		if (settings->frm == 3 || (settings->frm == 4 && SRFNAVTYPE(fs.navType, attref->GetVessel()))) {
 			switch (settings->speedMode) {
 			case 0:
@@ -500,7 +459,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetTextColor(WHITE);
 				if (a % 10000 == 0) {
 					skp->Line(cp1_x - chw_i, ty, cp1_x, ty);
-					s = std::to_string((int)((a / 100) - spd_off * (100 * 1000)));
+					s = to_string((int)((a / 100) - spd_off * (100 * 1000)));
 					int n = 5 - s.length();
 					if (n < 0) n = 0;
 					s.insert(0, n, '0');
@@ -565,17 +524,17 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		// Draw current speed
 		double s_airspeed = airspeed - (spd_off * 100 * 1000);
 		if (s_airspeed < 10) {
-			s = std::to_string(round((double)s_airspeed * (double)100) / (double)100);
-			std::string::size_type n = s.find('.');
+			s = to_string(round((double)s_airspeed * (double)100) / (double)100);
+			string::size_type n = s.find('.');
 			s = s.substr(0, n + 3);
 		}
 		else if (s_airspeed < 100) {
-			s = std::to_string(round((double)s_airspeed * (double)10) / (double)10);
-			std::string::size_type n = s.find('.');
+			s = to_string(round((double)s_airspeed * (double)10) / (double)10);
+			string::size_type n = s.find('.');
 			s = s.substr(0, n + 2);
 		}
 		else {
-			s = std::to_string((int)round(s_airspeed));
+			s = to_string((int)round(s_airspeed));
 		}
 		if (!has_airspeed)
 			s = "-----";
@@ -620,7 +579,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				if (a % 10000 == 0) {
 					skp->Line(cp2_x, ty, cp2_x + chw_i, ty);
 					if (a >= 0) {
-						s = std::to_string((a / 10000) - (INT64)(alt_off * (100 * 1000)));
+						s = to_string((a / 10000) - (INT64)(alt_off * (100 * 1000)));
 						int n = 5 - s.length();
 						if (n < 0) n = 0;
 						s.insert(0, n, '0');
@@ -698,17 +657,17 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		// Draw current altitude
 		double s_altitude = altitude - ((INT64)alt_off * 100 * 1000 * 1000);
 		if (s_altitude < 100 * 1000) {
-			s = std::to_string(round((double)s_altitude / (double)10) / (double)100);
-			std::string::size_type n = s.find('.');
+			s = to_string(round((double)s_altitude / (double)10) / (double)100);
+			string::size_type n = s.find('.');
 			s = s.substr(0, n + 3);
 		}
 		else if (s_altitude < 1000 * 1000){
-			s = std::to_string(round((double)s_altitude / (double)100) / (double)10);
-			std::string::size_type n = s.find('.');
+			s = to_string(round((double)s_altitude / (double)100) / (double)10);
+			string::size_type n = s.find('.');
 			s = s.substr(0, n + 2);
 		}
 		else {
-			s = std::to_string((int)round((double)s_altitude / (double)1000));
+			s = to_string((int)round((double)s_altitude / (double)1000));
 		}
 		skp->SetPen(penGreen);
 		skp->Line(cp2_x, mid_y, cp2_x + chw54_i, mid_y);
@@ -739,7 +698,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			skp->Rectangle(cp2_x - 4, y + height - th, x + width, y + height + 8);
 			skp->SetBrush(NULL);
 			s = "+";
-			s.append(std::to_string((double)alt_off / 10));
+			s.append(to_string((double)alt_off / 10));
 			s = s.substr(0, s.find(".") + 2);
 			s.append(" Mkm");
 			tw = skp->GetTextWidth(s.c_str(), s.length());
@@ -750,7 +709,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			skp->Rectangle(x, y + height - th, cp1_x + 4, y + height + 8);
 			skp->SetBrush(NULL);
 			s = "+";
-			s.append(std::to_string((double)spd_off / 10));
+			s.append(to_string((double)spd_off / 10));
 			s = s.substr(0, s.find(".") + 2);
 			s.append(" Mm/s");
 			tw = skp->GetTextWidth(s.c_str(), s.length());
@@ -764,7 +723,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 		double h = cp1_y - y;
 		double w = cp1_x - x - skp->GetTextWidth(spd.c_str(), spd.length());
 		skp->Text(x + (int)round(w / 2), y + th2, spd.c_str(), spd.length());
-		std::string alt = "ALT km";
+		string alt = "ALT km";
 		w = width - cp2_x - skp->GetTextWidth(alt.c_str(), alt.length());
 		skp->Text(cp2_x + (int)round(w / 2), y + th2, alt.c_str(), alt.length());
 	}
@@ -780,8 +739,8 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->Line(cp1_x - chw3_i, cp1_y, cp2_x + chw3_i, cp1_y);
 	skp->Line(cp1_x + mid_width_2, cp1_y, cp1_x + mid_width_2, y + height);
 	skp->SetTextColor(WHITE);
-	std::string frmS = frmStrings[settings->frm];
-	if (settings->frm == 4) frmS.append(std::to_string(settings->navId + 1));
+	string frmS = frmStrings[settings->frm];
+	if (settings->frm == 4) frmS.append(to_string(settings->navId + 1));
 	skp->TextBox(cp1_x + chw3_i, y + chw4_i, cp1_x + mid_width_3, cp1_y, frmS.c_str(), frmS.length());
 	char buf[50];
 	if (attref->GetReferenceName(buf, 50)) {
@@ -1018,12 +977,12 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 			if (exp <= 3) {
 				double sc = pow(10, 4 - max(0, exp));
 				ecc = round(ecc * sc) / sc;
-				s = std::to_string(ecc).substr(0, 6);
+				s = to_string(ecc).substr(0, 6);
 			}
 			else {
 				ecc /= pow(10, exp);
 				ecc = round(ecc * (double)100) / (double)100;
-				s = std::to_string(ecc).substr(0, 4).append("e").append(std::to_string(exp));
+				s = to_string(ecc).substr(0, 4).append("e").append(to_string(exp));
 			}
 			WriteText(skp, cp1_x + chw3_i, iy, kw, "Ecc", s);
 			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "Inc", convertAngleString(fs.inc));
@@ -1066,19 +1025,19 @@ void AttitudeIndicatorMFD::DrawIndicators(oapi::Sketchpad* skp, int x1, int y1, 
 		int ay = y2 - (int)((i * h) / 4);
 		skp->Line(x1, ay, x2, ay);
 		if (i < 4) {
-			std::string s = std::to_string(i - (b ? 1 : 0));
+			string s = to_string(i - (b ? 1 : 0));
 			int tw = skp->GetTextWidth(s.c_str(), s.length());
 			skp->Text(x1 - tw - (int)round(chw3), ay - (int)(th / 2) - (int)round(chw3), s.c_str(), s.length());
 		}
 	}
 }
 
-std::string AttitudeIndicatorMFD::convertAngleString(double angle) {
+string AttitudeIndicatorMFD::convertAngleString(double angle) {
 	double ang = angle*DEG;
 	double scale = 10;
 	if (ang < 100) scale = 100;
 	if (ang < 10) scale = 1000;
-	std::string s = std::to_string(round(ang * scale) / scale);
+	string s = to_string(round(ang * scale) / scale);
 	if (ang < 0)
 		s = s.substr(0, 6);
 	else
@@ -1087,9 +1046,9 @@ std::string AttitudeIndicatorMFD::convertAngleString(double angle) {
 	return s;
 }
 
-std::string AttitudeIndicatorMFD::convertAltString(double altitude) {
+string AttitudeIndicatorMFD::convertAltString(double altitude) {
 	if (altitude != 0 && !isnormal(altitude)) return "N/A";
-	std::string s_suff = "";
+	string s_suff = "";
 	if (abs(altitude) > 1000) {
 		s_suff = "k";
 		altitude /= 1000; // in k
@@ -1110,8 +1069,8 @@ std::string AttitudeIndicatorMFD::convertAltString(double altitude) {
 	if (abs(altitude) < 1000) scale = 10;
 	if (abs(altitude) < 100) scale = 100;
 	if (abs(altitude) < 10) scale = 1000;
-	std::string s;
-	s.append(std::to_string(round(altitude * scale) / scale));
+	string s;
+	s.append(to_string(round(altitude * scale) / scale));
 	if (altitude < 0)
 		s = s.substr(0, 6);
 	else

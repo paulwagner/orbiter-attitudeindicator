@@ -2,6 +2,10 @@
 #define _MFDCORE_H_
 
 #include "Orbitersdk.h"
+#include "Configuration.h"
+#include <vector>
+
+using namespace std;
 
 #define DEFAULT_ZOOM 1.2
 #define DEFAULT_SPEED 0;
@@ -42,5 +46,8 @@ typedef struct _MFDSettings {
 	int navId;
 	double* navCrs;
 } MFDSettings;
+
+MFDSettings* loadSettings(CONFIGURATION& config, VESSEL* vessel, int mfd);
+void freeAllSettings();
 
 #endif

@@ -119,6 +119,7 @@
     <ClCompile Include="commons.cpp" />
     <ClCompile Include="Configuration.cpp" />
     <ClCompile Include="imageloader.cpp" />
+    <ClCompile Include="MFDCore.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ADI.h" />
