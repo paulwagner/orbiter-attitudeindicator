@@ -41,17 +41,15 @@ typedef struct {
 	bool hasNavTarget;
 	VECTOR3 navTargetRelPos;
 	VECTOR3 navTargetRelVel;
-	double navBrg;
-	int navCnt;
-	double* navCrs;
+	//double navBrg;
+	//int navCnt;
+	//double* navCrs;
 	DWORD navType;
-	VECTOR3 manRot;
-	bool hasManRot;
 } FLIGHTSTATUS;
 
 class AttitudeReferenceADI : public AttitudeReference {
 public:
-  AttitudeReferenceADI(const VESSEL* vessel);
+  AttitudeReferenceADI(const VESSEL* vessel, const MFDSettings *settings);
   ~AttitudeReferenceADI();
   inline FLIGHTSTATUS &GetFlightStatus(){ return fs; };
   bool PostStep(double simt, double simdt, double mjd);
@@ -60,8 +58,6 @@ public:
   bool GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel);
   bool GetManeuverDirections(VECTOR3 &man);
   bool GetReferenceName(char *string, int n);
-  void saveCurrentAttitude();
-  bool getExternalAttitude();
 
 private:
 	FLIGHTSTATUS fs;

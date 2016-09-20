@@ -6,18 +6,20 @@
 #include "ADI.h"
 #include "AttitudeReferenceADI.h"
 #include <sstream>
+#include <vector>
 #include "Configuration.h"
 #include "commons.h"
 #include "AttitudeRetrieval.h"
 
-#define MFDCOUNT 10
+using namespace std;
+
 #define SRFNAVTYPE(x, v) ((x == TRANSMITTER_NONE && v->GetAtmRef() != 0) ||x == TRANSMITTER_ILS || x == TRANSMITTER_VOR)
 
 // ==============================================================
 // Global variables
 static int MFDMode;
 static AttitudeIndicatorMFD* CurrentMFD = 0;
-static MFDSettings settingsArray[MFDCOUNT];
+static vector<MFDSettings*> settingsMap;
 
 // ==============================================================
 // API interface
@@ -39,6 +41,11 @@ DLLCLBK void InitModule (HINSTANCE hDLL)
 DLLCLBK void ExitModule (HINSTANCE hDLL)
 {
 	TRACE("[AttitudeIndicatorMFD] Enter: ExitModule");
+	// Free MFD settings
+	for (vector<MFDSettings*>::iterator it = settingsMap.begin(); it != settingsMap.end(); ++it) {
+		if ((*it)) free((*it));
+		//settingsMap.erase(it);
+	}
 	// Unregister the custom MFD mode when the module is unloaded
 	oapiUnregisterMFDMode(MFDMode);
 }
@@ -67,14 +74,22 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 	brushBlack = oapiCreateBrush(BLACK);
 	brushYellow2 = oapiCreateBrush(YELLOW2);
 	// MFD initialisation
-	if (mfd > MFDCOUNT - 1) mfd = MFDCOUNT - 1;
-	settings = &(settingsArray[mfd]);
-	attref = new AttitudeReferenceADI(pV);
+	bool hasSettings = false;
+	for (vector<MFDSettings*>::iterator it = settingsMap.begin(); it != settingsMap.end(); ++it) {
+		if ((*it) && (*it)->vessel == vessel->GetHandle() && (*it)->mfd == mfd) {
+			hasSettings = true;
+			settings = (*it);
+			break;
+		}
+	}
 	config = new Configuration();
 	if (!config->loadConfig(CONFIG_FILE)) {
 		oapiWriteLog("[AttitudeIndicatorMFD] Failed to load config.");
 	}
-	if (!settings->isValid) {
+	if (!hasSettings) {
+		settings = (MFDSettings*) malloc(sizeof(MFDSettings));
+		settings->vessel = vessel->GetHandle();
+		settings->mfd = mfd;
 		settings->zoom = DEFAULT_ZOOM;
 		settings->mode = config->getConfig().startMode;
 		settings->frm = config->getConfig().startFrame;
@@ -85,15 +100,12 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 		settings->drawRadial = config->getConfig().startRadial;
 		settings->drawPerpendicular = config->getConfig().startPerpendicular;
 		settings->turnVectorMode = config->getConfig().startTurnVectorMode;
-		settings->isValid = true;
 		settings->hasManRot = false;
-	} else {
-		// TODO: Avoid manual copy of settings
-		attref->GetFlightStatus().hasManRot = settings->hasManRot;
-		attref->GetFlightStatus().manRot = settings->manRot;
-		attref->SetDockRef(settings->idsDockRef);
-		attref->SetNavid(settings->navId);
+		settings->idsDockRef = false;
+		settings->navId = 0;
+		settingsMap.push_back(settings);
 	}
+	attref = new AttitudeReferenceADI(pV, settings);
 	chw = round((double)H / 20);
 	chw = min(chw,round((double)W / 20));
 	chw2 = chw / 2;
@@ -107,11 +119,6 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 AttitudeIndicatorMFD::~AttitudeIndicatorMFD()
 {
 	TRACE("[AttitudeIndicatorMFD] Enter: _ddecl");
-	// Save persistent values of ADI reference class
-	settings->hasManRot = attref->GetFlightStatus().hasManRot;
-	settings->manRot = attref->GetFlightStatus().manRot;
-	settings->idsDockRef = attref->IsDockRef();
-	settings->navId = attref->GetNavid();
 	// MFD cleanup code
 	delete (attref);
 	delete (adi);
@@ -151,7 +158,7 @@ void AttitudeIndicatorMFD::CreateADI() {
 		adi = new ADI(1, 1, W - 2, H - 2, attref, chw, chw, config->getConfig(), settings);
 		break;
 	}
-	attref->SetMode(settings->frm);
+	attref->invalidateAttitude();
 }
 
 // Return button labels
@@ -261,10 +268,10 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_R:
 		if (settings->frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType, attref->GetVessel())) {
 			// Button OB- in NAV mode
-			crs = attref->GetFlightStatus().navCrs[attref->GetNavid()];
+			crs = attref->GetFlightStatus().navCrs[settings->navId];
 			crs -= RAD;
 			if (crs < 0) crs += 2 * PI;
-			attref->GetFlightStatus().navCrs[attref->GetNavid()] = crs;
+			attref->GetFlightStatus().navCrs[settings->navId] = crs;
 			return true;
 		}
 		settings->drawRadial = !settings->drawRadial;
@@ -272,10 +279,10 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 	case OAPI_KEY_D:
 		if (settings->frm == 4 && SRFNAVTYPE(attref->GetFlightStatus().navType, attref->GetVessel())) {
 			// Button OB+ in NAV mode
-			crs = attref->GetFlightStatus().navCrs[attref->GetNavid()];
+			crs = attref->GetFlightStatus().navCrs[settings->navId];
 			crs += RAD;
 			if (crs >= 2 * PI) crs -= 2 * PI;
-			attref->GetFlightStatus().navCrs[attref->GetNavid()] = crs;
+			attref->GetFlightStatus().navCrs[settings->navId] = crs;
 			return true;
 		}
 		settings->drawPerpendicular = !settings->drawPerpendicular;
@@ -292,19 +299,21 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		return true;
 	case OAPI_KEY_F:
 		settings->frm = (settings->frm + 1) % frmCount;
-		attref->SetMode(settings->frm);
+		attref->invalidateAttitude();
 		InvalidateButtons();
 		return true;
 	case OAPI_KEY_S:
 		if (settings->frm == 4 && (attref->GetFlightStatus().navType == TRANSMITTER_IDS || attref->GetFlightStatus().navType == TRANSMITTER_VTOL)) {
-			attref->ToggleDockRef();
+			settings->idsDockRef = !settings->idsDockRef;
 			return true;
 		}
 		if (settings->frm <= 2) {
-			if (attref->GetFlightStatus().hasManRot)
-				attref->GetFlightStatus().hasManRot = false;
-			else
-				attref->saveCurrentAttitude();
+			if (settings->hasManRot)
+				settings->hasManRot = false;
+			else {
+				settings->hasManRot = true;
+				attref->GetVessel()->GetGlobalOrientation(settings->manRot);
+			}
 			return true;
 		}
 		settings->speedMode = (settings->speedMode + 1) % speedCount;
@@ -317,13 +326,18 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		}
 		if (settings->frm <= 2 && AttitudeRetrieval::isSupported()){
 			// GET button in ECL,EQU,OVOM
-			attref->getExternalAttitude();
+			VECTOR3 globRot;
+			settings->hasManRot = false;
+			if (AttitudeRetrieval::isSupported() && AttitudeRetrieval::getExternalAttitude(globRot)) {
+				settings->hasManRot = true;
+				settings->manRot = globRot;
+			}
 			return true;
 		}
 		int nc = attref->GetVessel()->GetNavCount();
 		if (nc > 0) {
-			int nid = attref->GetNavid();
-			attref->SetNavid((nid + 1) % nc);
+			int nid = settings->navId;
+			settings->navId = (nid + 1) % nc;
 		}
 		InvalidateButtons();
 		return true;
@@ -353,7 +367,7 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 
 		std::string frmS = frmStrings[settings->frm];
 
-		if (settings->frm == 4) frmS.append(std::to_string(attref->GetNavid() + 1));
+		if (settings->frm == 4) frmS.append(std::to_string(settings->navId + 1));
 		int slen = frmS.length();
 		int swidth = skp->GetTextWidth(frmS.c_str(), slen);
 		skp->Rectangle(chw2_i, chw3_i, chw2_i + swidth, chw3_i + th);
@@ -371,7 +385,7 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 			skp->SetPen(penYellow2);
 			skp->SetBrush(brushYellow2);
 			char* str = "DOCK";
-			if (!attref->IsDockRef())
+			if (!settings->idsDockRef)
 				str = "VESSEL";
 			int slen = strlen(str);
 			int swidth = skp->GetTextWidth(str, slen);
@@ -383,7 +397,7 @@ bool AttitudeIndicatorMFD::Update(oapi::Sketchpad *skp) {
 			skp->SetPen(penYellow2);
 			skp->SetBrush(brushYellow2);
 			char* str = "TOP";
-			if (!attref->IsDockRef())
+			if (!settings->idsDockRef)
 				str = "NOSE";
 			int slen = strlen(str);
 			int swidth = skp->GetTextWidth(str, slen);
@@ -762,7 +776,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 	skp->Line(cp1_x + mid_width_2, cp1_y, cp1_x + mid_width_2, y + height);
 	skp->SetTextColor(WHITE);
 	std::string frmS = frmStrings[settings->frm];
-	if (settings->frm == 4) frmS.append(std::to_string(attref->GetNavid() + 1));
+	if (settings->frm == 4) frmS.append(std::to_string(settings->navId + 1));
 	skp->TextBox(cp1_x + chw3_i, y + chw4_i, cp1_x + mid_width_3, cp1_y, frmS.c_str(), frmS.length());
 	char buf[50];
 	if (attref->GetReferenceName(buf, 50)) {
@@ -785,7 +799,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 
 			// Row 2
 			iy += (chw3_i + th);
-			WriteText(skp, cp1_x + chw3_i, iy, kw, "CRS", convertAngleString(fs.navCrs[attref->GetNavid()]));
+			WriteText(skp, cp1_x + chw3_i, iy, kw, "CRS", convertAngleString(fs.navCrs[settings->navId]));
 			WriteText(skp, cp1_x + mid_width_2 + chw3_i, iy, kw, "HDG", convertAngleString(fs.heading));
 
 			// Row 3
@@ -838,7 +852,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 					skp->SetBrush(brushYellow2);
 					char* str = "DOCK";
 					int tw = skp->GetTextWidth("DOCK", 4);
-					if (!attref->IsDockRef()) {
+					if (!settings->idsDockRef) {
 						str = "VESSEL";
 						tw = skp->GetTextWidth("VESSEL", 6);
 					}
@@ -912,7 +926,7 @@ void AttitudeIndicatorMFD::DrawDataField(oapi::Sketchpad *skp, int x, int y, int
 				skp->SetBrush(brushYellow2);
 				char* str = "TOP";
 				int tw = skp->GetTextWidth("TOP", 3);
-				if (!attref->IsDockRef()) {
+				if (!settings->idsDockRef) {
 					str = "NOSE";
 					tw = skp->GetTextWidth("NOSE", 4);
 				}

@@ -23,7 +23,8 @@ const int speedCount = 3;
 const int lhlnDataCount = 2;
 
 typedef struct _MFDSettings {
-	bool isValid = false;
+	OBJHANDLE vessel = 0;
+	int mfd = 0;
 	float zoom;
 	int frm;
 	int mode;

@@ -11,13 +11,12 @@
 #include "attref.h"
 #include "commons.h"
 
-AttitudeReference::AttitudeReference (const VESSEL *vessel)
+AttitudeReference::AttitudeReference (const VESSEL *vessel, const MFDSettings* settings)
 {
 	v = vessel;
+	s = settings;
 	projmode = 0;
-	mode = 0;
 	tgtmode = 0;
-	navid = 0;
 	valid_axes = false;
 	valid_euler = false;
 	valid_tgteuler = false;
@@ -26,7 +25,6 @@ AttitudeReference::AttitudeReference (const VESSEL *vessel)
 	tgt_rvel = _V(0,0,0);
 	tgt_ppos = _V(0,0,0);
 	tgt_ptime = 0;
-	idsDockRef = false;
 }
 
 // ==============================================================
@@ -41,31 +39,9 @@ void AttitudeReference::SetProjMode (int newmode)
 
 // ==============================================================
 
-void AttitudeReference::SetMode (int newmode)
-{
-	mode = newmode;
-	valid_axes = false;
-	valid_euler = false;
-	valid_tgteuler = false;
-}
-
-// ==============================================================
-
 void AttitudeReference::SetTgtmode (int newmode)
 {
 	tgtmode = newmode;
-}
-
-// ==============================================================
-
-void AttitudeReference::SetNavid (int newnavid)
-{
-	navid = newnavid;
-	if (mode == 4) {
-		valid_axes = false;
-		valid_euler = false;
-		valid_tgteuler = false;
-	}
 }
 
 // ==============================================================
@@ -94,7 +70,7 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 
 	if (!valid_axes) {
 		VECTOR3 axis1, axis2, axis3;
-		switch (mode) {
+		switch (s->frm) {
 		case 0:    // inertial (ecliptic)
 			axis3 = _V(1,0,0);
 			axis2 = _V(0,1,0);
@@ -126,7 +102,7 @@ const MATRIX3 &AttitudeReference::GetFrameRotMatrix () const
 			axis3 = crossp (axis2,yaxis);
 			} break;
 		case 4: {  // synced to NAV source (type-specific)
-			NAVHANDLE hNav = v->GetNavSource(navid);
+			NAVHANDLE hNav = v->GetNavSource(s->navId);
 			axis3 = _V(0,0,1);
 			axis2 = _V(0,1,0);
 			if (hNav) {
@@ -202,9 +178,9 @@ const VECTOR3 &AttitudeReference::GetEulerAngles () const
 		VECTOR3 shipy = { srot.m12, srot.m22, srot.m32 };
 		VECTOR3 shipz = { srot.m13, srot.m23, srot.m33 };
 
-		NAVHANDLE navhandle = v->GetNavSource(GetNavid());
+		NAVHANDLE navhandle = v->GetNavSource(s->navId);
 		NAVDATA ndata;
-		if (mode == 4 && idsDockRef && navhandle) {
+		if (s->frm == 4 && s->idsDockRef && navhandle) {
 			oapiGetNavData(navhandle, &ndata);
 			// map ship's docking port axes into reference frame
 			if (ndata.type == TRANSMITTER_IDS) {
@@ -276,7 +252,7 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 			case 2:  // direction of NAV source
 			case 3: { // relative velocity of NAV source
 				NAVHANDLE hNav;
-				if (mode >= 4 && (hNav = v->GetNavSource (navid))) {
+				if (s->frm >= 4 && (hNav = v->GetNavSource (s->navId))) {
 					VECTOR3 dir, sdir;
 					if (tgtmode == 2) {
 						oapiGetNavPos (hNav, &dir);
@@ -286,7 +262,7 @@ bool AttitudeReference::GetTgtEulerAngles (VECTOR3 &tgt_euler) const
 						// Correct docking port poosition in IDS mode
 						NAVDATA ndata;
 						oapiGetNavData(hNav, &ndata);
-						if (idsDockRef && ndata.type == TRANSMITTER_IDS) {
+						if (s->idsDockRef && ndata.type == TRANSMITTER_IDS) {
 							DOCKHANDLE vDh = v->GetDockHandle(0);
 							VECTOR3 vDpos, vDrot, vDdir;
 							v->GetDockParams(vDh, vDpos, vDdir, vDrot);
@@ -342,8 +318,8 @@ void AttitudeReference::PostStep (double simt, double simdt, double mjd)
 	valid_euler = false;
 	valid_tgteuler = false;
 
-	if (mode >= 4 && tgtmode == 3) {
-		NAVHANDLE hNav = v->GetNavSource (navid);
+	if (s->frm >= 4 && tgtmode == 3) {
+		NAVHANDLE hNav = v->GetNavSource (s->navId);
 		if (hNav) {
 			VECTOR3 tvel,svel;
 			v->GetGlobalVel (svel);

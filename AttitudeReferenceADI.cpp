@@ -3,7 +3,7 @@
 #include "commons.h"
 #include "AttitudeRetrieval.h"
 
-AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel) : AttitudeReference(vessel) {
+AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel, const MFDSettings* settings) : AttitudeReference(vessel, settings) {
 	fs.navCnt = vessel->GetNavCount();
 	fs.navCrs = (double*)malloc(sizeof(double) * fs.navCnt);
 	for (int i = 0; i < fs.navCnt; i++)
@@ -17,21 +17,6 @@ AttitudeReferenceADI::~AttitudeReferenceADI() {
 	if (fs.navCrs) delete fs.navCrs;
 }
 
-void AttitudeReferenceADI::saveCurrentAttitude() {
-	fs.hasManRot = true;
-	GetVessel()->GetGlobalOrientation(fs.manRot);
-}
-
-bool AttitudeReferenceADI::getExternalAttitude() {
-	VECTOR3 globRot;
-	fs.hasManRot = false;
-	if (AttitudeRetrieval::isSupported() && AttitudeRetrieval::getExternalAttitude(globRot)) {
-		fs.hasManRot = true;
-		fs.manRot = globRot;
-	}
-	return fs.hasManRot;
-}
-
 bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	AttitudeReference::PostStep(simt, simdt, mjd);
 
@@ -42,7 +27,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	OBJHANDLE body;
 	// Body-independent parameters
 	int frm = FRAME_EQU;
-	if (GetMode() == 0) frm = FRAME_ECL;
+	if (GetSettings()->frm == 0) frm = FRAME_ECL;
 	v->GetAngularVel(vec);
 	fs.pitchrate = vec.x*DEG; fs.rollrate = vec.z*DEG; fs.yawrate = -vec.y*DEG;
 	fs.aoa = v->GetAOA();
@@ -52,7 +37,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 	oapiGetPitch(v->GetHandle(), &fs.pitch);
 	oapiGetBank(v->GetHandle(), &fs.bank);
 	// Target-relative Parameters
-	NAVHANDLE navhandle = v->GetNavSource(GetNavid());
+	NAVHANDLE navhandle = v->GetNavSource(GetSettings()->navId);
 	NAVDATA ndata;
 	fs.hasNavTarget = false;
 	DWORD prevNavType = fs.navType;
@@ -84,7 +69,7 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 			if (GetProjMode() == 0) fs.navBrg = atan2(dir.x, dir.z); else fs.navBrg = asin(dir.x);
 			fs.navBrg = posangle(fs.navBrg);
 			if (ndata.type == TRANSMITTER_ILS)
-				fs.navCrs[GetNavid()] = ndata.ils.appdir;
+				fs.navCrs[GetSettings()->navId] = ndata.ils.appdir;
 		}
 	}
 	bool navTypeChanged = (prevNavType != fs.navType);
@@ -144,8 +129,8 @@ bool AttitudeReferenceADI::PostStep(double simt, double simdt, double mjd){
 
 	// Body-relative parameters
 	body = GetVessel()->GetGravityRef();
-	if (GetMode() == 3 || 
-		(GetMode() == 4 && navhandle != 0 && (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL)))
+	if (GetSettings()->frm == 3 ||
+		(GetSettings()->frm == 4 && navhandle != 0 && (ndata.type == TRANSMITTER_ILS || ndata.type == TRANSMITTER_VOR || ndata.type == TRANSMITTER_VTOL)))
 		body = GetVessel()->GetSurfaceRef();
 	double body_rad = oapiGetSize(body);
 	v->GetElements(body, elem, &orbitparam, 0, frm);
@@ -221,10 +206,10 @@ bool AttitudeReferenceADI::GetTargetDirections(VECTOR3 &tgtpos, VECTOR3 &tgtvel)
 }
 
 bool AttitudeReferenceADI::GetManeuverDirections(VECTOR3 &man) {
-	if (!fs.hasManRot) return false;
+	if (!GetSettings()->hasManRot) return false;
 	man = _V(0, 0, 1);
 	MATRIX3 R;
-	getRotMatrix(fs.manRot, &R);
+	getRotMatrix(GetSettings()->manRot, &R);
 	man = tmul(R, man); // Apply maneuver rotation
 	man = tmul(GetFrameRotMatrix(), man); // Apply frame rotation
 	return true;
@@ -241,7 +226,7 @@ void AttitudeReferenceADI::CalculateDirection(VECTOR3 euler, VECTOR3 &dir) {
 
 bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {
 	OBJHANDLE handle = 0;
-	switch (GetMode()) {
+	switch (GetSettings()->frm) {
 	case 0:
 	case 1:
 	case 2: {
@@ -256,7 +241,7 @@ bool AttitudeReferenceADI::GetReferenceName(char *string, int n) {
 		return true;
 	case 4: {
 		NAVDATA ndata;
-		NAVHANDLE navhandle = GetVessel()->GetNavSource(GetNavid());
+		NAVHANDLE navhandle = GetVessel()->GetNavSource(GetSettings()->navId);
 		if (navhandle) {
 			oapiGetNavData(navhandle, &ndata);
 			switch (ndata.type) {

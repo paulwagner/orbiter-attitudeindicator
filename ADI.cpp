@@ -270,7 +270,7 @@ void ADI::DrawWing(oapi::Sketchpad* skp) {
 	skp->SetPen(penWing);
 	int w2 = x + (int)round(width / 2);
 	int h2 = y + (int)round(height / 2);
-	if (attref->IsDockRef() && attref->GetMode() == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
+	if (settings->idsDockRef && settings->frm == 4 && attref->GetFlightStatus().navType == TRANSMITTER_IDS) {
 		int tx = (int)round(cw * 2 / 5);
 		int ty = (int)round(cw * 2 / 5);
 		skp->SetBrush(NULL);
@@ -386,7 +386,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	const VESSEL *v = attref->GetVessel();
 	FLIGHTSTATUS fs = attref->GetFlightStatus();
 	VECTOR3 pgd, nml, rad, pep, tgt, man;
-	int frm = attref->GetMode();
+	int frm = settings->frm;
 	double phi;
 	double x, y;
 	int ix, iy;
@@ -409,7 +409,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 
 	if (frm == 4){
 		// Target marker
-		if (fs.hasNavTarget && isnormal(length(tgt)) && (!fs.docked || !attref->IsDockRef())){
+		if (fs.hasNavTarget && isnormal(length(tgt)) && (!fs.docked || !settings->idsDockRef)){
 			int tx = (int)round(cxd / 2);
 			int ty = (int)round(cyd / 2);
 			ProjectVector(tgt, x, y, phi);
@@ -453,7 +453,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 		if (fs.navType == TRANSMITTER_ILS || (fs.navType == TRANSMITTER_NONE && attref->GetVessel()->GetAtmRef() != 0) || fs.navType == TRANSMITTER_VOR) {
 			int tx = cx;
 			int ty = cy;
-			double crs = fs.navCrs[attref->GetNavid()];
+			double crs = fs.navCrs[settings->navId];
 			VECTOR3 chvec;
 			double sinp = sin(crs), cosp = cos(crs);
 			if (attref->GetProjMode() == 0)
@@ -654,7 +654,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	}
 
 	// Maneuver marker
-	if (fs.hasManRot && frm <= 2) {
+	if (settings->hasManRot && frm <= 2) {
 		ProjectVector(man, x, y, phi);
 		ix = (int)x, iy = (int)y;
 		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;

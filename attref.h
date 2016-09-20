@@ -12,6 +12,7 @@
 #define __ATTREF_H
 
 #include "Orbitersdk.h"
+#include "MFDCore.h"
 
 #ifndef ORBITER2016
 // From beta OrbiterAPI.h
@@ -29,23 +30,18 @@ inline double posangle(double angle)
 
 class AttitudeReference {
 public:
-	AttitudeReference (const VESSEL *vessel);
+	AttitudeReference (const VESSEL *vessel, const MFDSettings* settings);
 	inline const VESSEL *GetVessel() const { return v; }
+	inline const MFDSettings* GetSettings() { return s;  }
 
 	void SetProjMode (int newmode);
 	inline int GetProjMode () const { return projmode; }
 	// 0=yawrange 360, 1=pitchrange 360
 
-	void SetMode (int newmode);
-	inline int GetMode () const { return mode; }
-	// 0=ecliptic, 1=equator, 2=orbit, 3=local horizon, 4+ = NAV receiver
-
 	void SetTgtmode (int newmode);
 	inline int GetTgtmode () const { return tgtmode; }
 	// 0=no target, 1=fixed, 2=direction of current nav source, 3=rel velocity of current nav source
 
-	void SetNavid (int newnavid);
-	inline int GetNavid () const { return navid; }
 	const MATRIX3 &GetFrameRotMatrix () const;
 	const VECTOR3 &GetEulerAngles () const;
 	void SetEulerOffset (const VECTOR3 &ofs);
@@ -54,18 +50,14 @@ public:
 	void SetTgtOffset (const VECTOR3 &ofs);
 	inline const VECTOR3 &GetTgtOffset () const { return tgt_offs; }
 	void PostStep (double simt, double simdt, double mjd);
+	inline void invalidateAttitude() { valid_axes = valid_euler = valid_tgteuler = false; };
 
-	void inline ToggleDockRef(){ idsDockRef = !idsDockRef; }
-	inline bool IsDockRef() const { return idsDockRef; }
-	void inline SetDockRef(bool b){ idsDockRef = b; }
 
 private:
 	const VESSEL *v;
+	const MFDSettings* s;
 	int projmode;
-	int mode;
 	int tgtmode;
-	int navid;
-	bool idsDockRef;
 	mutable MATRIX3 R;
 	mutable VECTOR3 euler;
 	mutable VECTOR3 tgteuler;
