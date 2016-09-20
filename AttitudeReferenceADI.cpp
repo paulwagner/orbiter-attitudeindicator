@@ -9,6 +9,10 @@ AttitudeReferenceADI::AttitudeReferenceADI(const VESSEL* vessel, const MFDSettin
 	fs.navType = TRANSMITTER_NONE;
 	prevGS = 0; prevIAS = 0; prevTAS = 0; prevOS = 0; prevAlt = 0; prevt = 0;
 	PostStep(0, 0, 0);
+
+	prevNavPos = _V(0, 0, 0);
+	prevVPos = _V(0, 0, 0);
+	prevst = 0;
 }
 
 AttitudeReferenceADI::~AttitudeReferenceADI() {
@@ -167,25 +171,25 @@ void AttitudeReferenceADI::UpdateTargetEulerAngles() {
 	oapiGetNavData(hNav, &ndata);
 
 	// Calculate euler angles for direction of NAV source
-	VECTOR3 dir, sdir;
-	oapiGetNavPos(hNav, &dir);
-	v->GetGlobalPos(sdir);
+	VECTOR3 navPos, vPos;
+	oapiGetNavPos(hNav, &navPos);
+	v->GetGlobalPos(vPos);
 
-	VECTOR3 relDir = dir - sdir;
+	VECTOR3 relDir = navPos - vPos;
 	// Correct docking port poosition in IDS mode
 	if (s->idsDockRef && ndata.type == TRANSMITTER_IDS) {
 		DOCKHANDLE vDh = v->GetDockHandle(0);
 		VECTOR3 vDpos, vDrot, vDdir;
 		v->GetDockParams(vDh, vDpos, vDdir, vDrot);
 		v->GlobalRot(vDpos, vDpos);
-		sdir += vDpos;
+		vPos += vDpos;
 		MATRIX3 vrotm;
 		v->GetRotationMatrix(vrotm);
-		VECTOR3 vesselDir = tmul(vrotm, dir - sdir);
+		VECTOR3 vesselDir = tmul(vrotm, navPos - vPos);
 		offsetDir(vesselDir);
 		relDir = mul(vrotm, vesselDir);
 	}
-	dir = tmul(R, unit(relDir));
+	VECTOR3 dir = tmul(R, unit(relDir));
 	if (abs(relDir.x) <= 1.0 / 1000000 && abs(relDir.y) <= 1.0 / 1000000 && abs(relDir.z) <= 1.0 / 1000000) {
 		dir = _V(0, 0, 1); // When close, lock on target
 	}
@@ -196,8 +200,8 @@ void AttitudeReferenceADI::UpdateTargetEulerAngles() {
 	tgteuler.z = posangle(tgteuler.z);
 
 	// Calculate velocity of NAV source
-	VECTOR3 tvel, svel, tgt_rvel;
-	v->GetGlobalVel(svel);
+	VECTOR3 navVel, vVel;
+	v->GetGlobalVel(vVel);
 	OBJHANDLE hObj = NULL;
 	switch (ndata.type) {
 	case TRANSMITTER_IDS:
@@ -217,20 +221,27 @@ void AttitudeReferenceADI::UpdateTargetEulerAngles() {
 		if (ndata.type == TRANSMITTER_VOR) {
 			MATRIX3 Rp;
 			oapiGetRotationMatrix(hObj, &Rp);
-			oapiGetGlobalVel(hObj, &tvel);
-			tvel += mul(Rp, _V(-sin(ndata.vor.lng), 0, cos(ndata.vor.lng)) * PI2 / oapiGetPlanetPeriod(hObj)*oapiGetSize(hObj)*cos(ndata.vor.lat));
+			oapiGetGlobalVel(hObj, &navVel);
+			navVel += mul(Rp, _V(-sin(ndata.vor.lng), 0, cos(ndata.vor.lng)) * PI2 / oapiGetPlanetPeriod(hObj)*oapiGetSize(hObj)*cos(ndata.vor.lat));
+		}
+		else if (s->idsDockRef && ndata.type == TRANSMITTER_IDS) {
+			double st = oapiGetSimTime();
+			if (st - prevst > 0.1) {
+				navVel = (navPos - prevNavPos) / (st - prevst); prevNavPos = navPos;
+				vVel = (vPos - prevVPos) / (st - prevst); prevVPos = vPos;
+				prevst = st;
+			}
 		}
 		else {
-			oapiGetGlobalVel(hObj, &tvel);
+			oapiGetGlobalVel(hObj, &navVel);
 		}
-		tgt_rvel = svel - tvel;
-	}
-	dir = tmul(R, unit(tgt_rvel));
+		dir = tmul(R, unit(vVel - navVel));
 
-	tgtveleuler.y = asin(dir.y);
-	tgtveleuler.z = atan2(dir.x, dir.z);
-	tgtveleuler.y = posangle(tgtveleuler.y);
-	tgtveleuler.z = posangle(tgtveleuler.z);
+		tgtveleuler.y = asin(dir.y);
+		tgtveleuler.z = atan2(dir.x, dir.z);
+		tgtveleuler.y = posangle(tgtveleuler.y);
+		tgtveleuler.z = posangle(tgtveleuler.z);
+	}
 }
 
 

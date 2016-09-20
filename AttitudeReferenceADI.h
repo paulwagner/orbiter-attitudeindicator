@@ -100,6 +100,10 @@ private:
 	mutable VECTOR3 tgteuler;
 	mutable VECTOR3 tgtveleuler;
 
+	VECTOR3 prevNavPos;
+	VECTOR3 prevVPos;
+	double prevst;
+
 };
 
 #endif
