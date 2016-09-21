@@ -637,7 +637,6 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	// Maneuver marker
 	if (settings->hasManRot && frm <= 2) {
 		ProjectVector(man, x, y, phi);
-		sprintf(oapiDebugString(), "man: %f, %f, %f, phi: %f, xy: %f, %f", man.x, man.y, man.z, phi, x, y);
 		ix = (int)x, iy = (int)y;
 		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
 		skp->SetPen(penManeuver);
