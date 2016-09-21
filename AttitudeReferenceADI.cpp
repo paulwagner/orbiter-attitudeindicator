@@ -189,10 +189,12 @@ void AttitudeReferenceADI::UpdateTargetEulerAngles() {
 		offsetDir(vesselDir);
 		relDir = mul(vrotm, vesselDir);
 	}
+#ifdef ORBITER2016
 	else if (s->idsDockRef && ndata.type == TRANSMITTER_VTOL) {
 		// Correct target orientation
 		relDir *= -1;
 	}
+#endif
 	VECTOR3 dir = tmul(R, unit(relDir));
 	if (abs(relDir.x) <= 1.0 / 1000000 && abs(relDir.y) <= 1.0 / 1000000 && abs(relDir.z) <= 1.0 / 1000000) {
 		dir = _V(0, 0, 1); // When close, lock on target
