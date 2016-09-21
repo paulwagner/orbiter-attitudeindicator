@@ -304,6 +304,7 @@ void ADI::ProjectVector(VECTOR3 vector, double& x, double& y, double &phi) {
 	normalise(vector);
 	gluUnProject((GLdouble)width / 2, (GLdouble)height / 2, 0, model, proj, view, &cov.x, &cov.y, &cov.z);
 	phi = acos(dotp(vector, cov) / length(cov))*DEG;
+	if (!isnormal(phi)) phi = 0;
 	fp[0] = vector.x;
 	fp[1] = vector.y;
 	fp[2] = vector.z;
@@ -636,6 +637,7 @@ void ADI::DrawVectors(oapi::Sketchpad* skp) {
 	// Maneuver marker
 	if (settings->hasManRot && frm <= 2) {
 		ProjectVector(man, x, y, phi);
+		sprintf(oapiDebugString(), "man: %f, %f, %f, phi: %f, xy: %f, %f", man.x, man.y, man.z, phi, x, y);
 		ix = (int)x, iy = (int)y;
 		oapi::IVECTOR2 manDir; manDir.x = ix; manDir.y = iy;
 		skp->SetPen(penManeuver);
