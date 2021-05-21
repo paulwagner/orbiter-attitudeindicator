@@ -328,6 +328,9 @@ DLLCLBK void OcSetFrame(int frame) {
 
 // mode = [0(Rate MED),1(Rate HIGH),2(Rate LOW)]
 DLLCLBK void OcSetMode(int mode) {
+	if (!CurrentMFD)
+		return;
+
 	if (mode == 0) {
 		// Only data
 		CurrentMFD->getSettings()->turnVectorMode = 0;
@@ -351,6 +354,9 @@ DLLCLBK void OcSetMode(int mode) {
 
 // mode = [0(Error MED),1(Error HIGH),2(Error LOW)]
 DLLCLBK void OcSetMarker(int mode) {
+	if (!CurrentMFD)
+		return;
+
 	if (mode == 0) {
 		// Only PGD and NML
 		CurrentMFD->getSettings()->drawPrograde = CurrentMFD->getSettings()->drawNormal = true;
