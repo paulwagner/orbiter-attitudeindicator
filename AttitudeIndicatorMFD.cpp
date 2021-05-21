@@ -78,6 +78,7 @@ AttitudeIndicatorMFD::AttitudeIndicatorMFD(DWORD w, DWORD h, UINT mfd, VESSEL *v
 	chw3 = chw / 3;
 	adi = 0;
 	CreateADI();
+	CurrentMFD = this;
 	TRACE("[AttitudeIndicatorMFD] Leave: _cdecl");
 }
 
@@ -307,6 +308,62 @@ bool AttitudeIndicatorMFD::ConsumeKeyBuffered(DWORD key)
 		return true;
 	}
 	return false;
+}
+
+/* Callable methods for OrbiterControl */
+
+// frame = [0(LVLH),1(INRTL),2(REF)]
+DLLCLBK void OcSetFrame(int frame) {
+	if (!CurrentMFD)
+		return;
+
+	if (frame == 0)
+		CurrentMFD->getSettings()->frm = 2; // OV/OM
+	else if (frame == 1)
+		CurrentMFD->getSettings()->frm = 0; // ECL
+	else if (frame == 2)
+		CurrentMFD->getSettings()->frm = 4; // NAV1
+	CurrentMFD->InvalidateButtons();
+}
+
+// mode = [0(Rate MED),1(Rate HIGH),2(Rate LOW)]
+DLLCLBK void OcSetMode(int mode) {
+	if (mode == 0) {
+		// Only data
+		CurrentMFD->getSettings()->turnVectorMode = 0;
+		CurrentMFD->getSettings()->mode = 0;
+	}
+	else if (mode == 1) {
+		// TRI and data
+		CurrentMFD->getSettings()->turnVectorMode = 1;
+		CurrentMFD->getSettings()->mode = 0;
+	}
+	else if (mode == 2) {
+		// Nothing
+		CurrentMFD->getSettings()->mode = 1;
+		CurrentMFD->getSettings()->turnVectorMode = 0;
+	}
+	if (CurrentMFD->getSettings()->mode == 0) CurrentMFD->getSettings()->zoom += 0.4;
+	if (CurrentMFD->getSettings()->mode == 1) CurrentMFD->getSettings()->zoom -= 0.4;
+	CurrentMFD->CreateADI();
+	CurrentMFD->InvalidateButtons();
+}
+
+// mode = [0(Error MED),1(Error HIGH),2(Error LOW)]
+DLLCLBK void OcSetMarker(int mode) {
+	if (mode == 0) {
+		// Only PGD and NML
+		CurrentMFD->getSettings()->drawPrograde = CurrentMFD->getSettings()->drawNormal = true;
+		CurrentMFD->getSettings()->drawRadial = CurrentMFD->getSettings()->drawPerpendicular = false;
+	}
+	else if (mode == 1) {
+		// All markers
+		CurrentMFD->getSettings()->drawPrograde = CurrentMFD->getSettings()->drawNormal = CurrentMFD->getSettings()->drawRadial = CurrentMFD->getSettings()->drawPerpendicular = true;
+	}
+	else if (mode == 2) {
+		// No markers
+		CurrentMFD->getSettings()->drawPrograde = CurrentMFD->getSettings()->drawNormal = CurrentMFD->getSettings()->drawRadial = CurrentMFD->getSettings()->drawPerpendicular = false;
+	}
 }
 
 void AttitudeIndicatorMFD::PostStep(double simt, double simdt, double mjd) {

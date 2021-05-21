@@ -20,6 +20,9 @@ public:
 	bool Update (oapi::Sketchpad *skp);
 	static int MsgProc (UINT msg, UINT mfd, WPARAM wparam, LPARAM lparam);
 
+	MFDSettings* getSettings() { return settings; }
+	void CreateADI();
+
 protected:
 	AttitudeReferenceADI *attref;
 	Configuration *config;
@@ -28,7 +31,6 @@ protected:
 	double chw2;
 	double chw3;
 	void PostStep(double simt, double simdt, double mjd);
-	void CreateADI();
 	void DrawDataField(oapi::Sketchpad *skp, int x, int y, int width, int height);
 private:
 	oapi::Pen *penBlue, *penGreen, *penGreen2, *penRed, *penWhite, *penBlack, *penYellow2, *penYellow3;
