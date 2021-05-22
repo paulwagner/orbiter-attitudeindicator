@@ -331,25 +331,12 @@ DLLCLBK void OcSetMode(int mode) {
 	if (!CurrentMFD)
 		return;
 
-	if (mode == 0) {
-		// Only data
-		CurrentMFD->getSettings()->turnVectorMode = 0;
-		CurrentMFD->getSettings()->mode = 0;
-	}
-	else if (mode == 1) {
-		// TRI and data
-		CurrentMFD->getSettings()->turnVectorMode = 1;
-		CurrentMFD->getSettings()->mode = 0;
-	}
-	else if (mode == 2) {
-		// Nothing
-		CurrentMFD->getSettings()->mode = 1;
-		CurrentMFD->getSettings()->turnVectorMode = 0;
-	}
-	if (CurrentMFD->getSettings()->mode == 0) CurrentMFD->getSettings()->zoom += 0.4;
-	if (CurrentMFD->getSettings()->mode == 1) CurrentMFD->getSettings()->zoom -= 0.4;
-	CurrentMFD->CreateADI();
-	CurrentMFD->InvalidateButtons();
+	if (mode == 0)
+		CurrentMFD->getSettings()->turnVectorMode = 2; // On-ball indicator
+	else if (mode == 1)
+		CurrentMFD->getSettings()->turnVectorMode = 1; // Bar indicators
+	else if (mode == 2)
+		CurrentMFD->getSettings()->turnVectorMode = 0; // Nothing
 }
 
 // mode = [0(Error MED),1(Error HIGH),2(Error LOW)]
